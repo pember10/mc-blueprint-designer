@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
 import { useBlueprintStore } from '@/store/blueprintStore'
 import { useEditorStore } from '@/store/editorStore'
@@ -92,6 +92,8 @@ function GhostInstancedMesh({ positions, opacity }: GhostInstancedMeshProps) {
     return im
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positions, opacity])
+
+  useEffect(() => () => (mesh.material as THREE.Material).dispose(), [mesh])
 
   return <primitive object={mesh} />
 }

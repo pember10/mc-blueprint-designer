@@ -1,40 +1,36 @@
-import { useCallback, useRef } from 'react'
-import { useThree } from '@react-three/fiber'
-import * as THREE from 'three'
+import { useRef, useCallback } from 'react'
+import type { ThreeEvent } from '@react-three/fiber'
 import { useBlueprintStore } from '@/store/blueprintStore'
 import { useEditorStore } from '@/store/editorStore'
 
-/** Returns the mirrored positions for a given (x,y,z) based on symmetry settings */
 function getMirrorPositions(
   x: number, y: number, z: number,
   sizeX: number, sizeZ: number,
   symX: boolean, symZ: boolean,
 ): Array<{ x: number; y: number; z: number }> {
-  const positions: Array<{ x: number; y: number; z: number }> = [{ x, y, z }]
   const mx = sizeX - 1 - x
   const mz = sizeZ - 1 - z
-  if (symX && mx !== x) positions.push({ x: mx, y, z })
-  if (symZ && mz !== z) positions.push({ x, y, z: mz })
-  if (symX && symZ && mx !== x && mz !== z) positions.push({ x: mx, y, z: mz })
-  return positions
+  const out = [{ x, y, z }]
+  if (symX && mx !== x) out.push({ x: mx, y, z })
+  if (symZ && mz !== z) out.push({ x, y, z: mz })
+  if (symX && symZ && mx !== x && mz !== z) out.push({ x: mx, y, z: mz })
+  return out
 }
 
 /**
- * Invisible plane used for raycasting when no block face is hit.
- * Sits at Y=0 so blocks can be placed on the ground.
- */
-const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
-
-/**
- * Hook that handles all pointer events on the 3D canvas and maps them to
- * blueprint mutations based on the current tool mode.
+ * Returns R3F event handlers to attach to the invisible interaction plane.
+ *
+ * Non-paint tools: apply only on pointer-up when drag distance < 5 px
+ * (so left-drag for orbit doesn't accidentally place blocks).
+ * Paint tool: apply continuously while the pointer button is held.
  */
 export function useBlockInteraction() {
-  const { raycaster, camera, scene } = useThree()
-  const paintVisited = useRef(new Set<string>())
   const isPainting = useRef(false)
+  const paintVisited = useRef(new Set<string>())
+  const dragStart = useRef<{ x: number; y: number } | null>(null)
 
   const tool = useEditorStore((s) => s.tool)
+  const activeLayer = useEditorStore((s) => s.activeLayer)
   const selectedBlockName = useEditorStore((s) => s.selectedBlockName)
   const symmetryX = useEditorStore((s) => s.symmetryX)
   const symmetryZ = useEditorStore((s) => s.symmetryZ)
@@ -45,97 +41,31 @@ export function useBlockInteraction() {
   const setDragging = useEditorStore((s) => s.setDragging)
 
   const blueprint = useBlueprintStore((s) => s.blueprint)
-  const ghostBlueprint = useBlueprintStore((s) => s.ghostBlueprint)
   const setBlocks = useBlueprintStore((s) => s.setBlocks)
   const ensurePaletteEntry = useBlueprintStore((s) => s.ensurePaletteEntry)
 
-  const getRaycastPos = useCallback(
-    (event: PointerEvent | MouseEvent): { x: number; y: number; z: number; isGhost: boolean } | null => {
-      if (!blueprint) return null
-
-      const canvas = (event.target as HTMLElement).closest('canvas')
-      if (!canvas) return null
-      const rect = canvas.getBoundingClientRect()
-      const ndcX = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      const ndcY = -((event.clientY - rect.top) / rect.height) * 2 + 1
-
-      raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera)
-
-      // Collect all meshes in scene
-      const meshes: THREE.Object3D[] = []
-      scene.traverse((obj) => {
-        if (obj instanceof THREE.InstancedMesh) meshes.push(obj)
-      })
-
-      const hits = raycaster.intersectObjects(meshes, false)
-      if (hits.length > 0) {
-        const hit = hits[0]
-        const isGhost = (hit.object.userData.isGhost as boolean) ?? false
-        // The face normal tells us which face was hit; offset to get the block position
-        const normal = hit.face?.normal ?? new THREE.Vector3(0, 1, 0)
-        const point = hit.point.clone()
-        if (!isGhost) {
-          // Place on the face of the block (add offset in normal direction)
-          point.addScaledVector(normal, tool === 'erase' ? -0.5 : 0.5)
-        }
-        return {
-          x: Math.floor(point.x),
-          y: Math.floor(point.y),
-          z: Math.floor(point.z),
-          isGhost,
-        }
-      }
-
-      // Fall back to ground plane
-      const groundPoint = new THREE.Vector3()
-      raycaster.ray.intersectPlane(GROUND_PLANE, groundPoint)
-      if (groundPoint) {
-        return {
-          x: Math.floor(groundPoint.x),
-          y: 0,
-          z: Math.floor(groundPoint.z),
-          isGhost: false,
-        }
-      }
-      return null
-    },
-    [raycaster, camera, scene, blueprint, tool],
-  )
-
-  const applyAtPos = useCallback(
-    (x: number, y: number, z: number, isGhost: boolean) => {
+  const applyAt = useCallback(
+    (x: number, z: number) => {
       if (!blueprint) return
+      const y = activeLayer
       const { sizeX, sizeY, sizeZ } = blueprint
-
       if (x < 0 || y < 0 || z < 0 || x >= sizeX || y >= sizeY || z >= sizeZ) return
-
-      if (isGhost && tool !== 'erase') {
-        // Stamp from ghost: copy ghost block into active at this position (if active is air)
-        const activeIdx = blueprint.structure[y]?.[z]?.[x] ?? 0
-        if (activeIdx !== 0) return
-        const ghostIdx = ghostBlueprint?.structure[y]?.[z]?.[x] ?? 0
-        if (ghostIdx === 0) return
-        const ghostBlock = ghostBlueprint!.palette[ghostIdx]
-        if (!ghostBlock || ghostBlock.name === 'minecraft:air') return
-        const paletteIndex = ensurePaletteEntry(ghostBlock.name, ghostBlock.properties)
-        const entries = getMirrorPositions(x, y, z, sizeX, sizeZ, symmetryX, symmetryZ).map(
-          (p) => ({ ...p, paletteIndex }),
-        )
-        setBlocks(entries)
-        return
-      }
 
       if (tool === 'place' || tool === 'paint') {
         const paletteIndex = ensurePaletteEntry(selectedBlockName)
-        const entries = getMirrorPositions(x, y, z, sizeX, sizeZ, symmetryX, symmetryZ).map(
-          (p) => ({ ...p, paletteIndex }),
+        setBlocks(
+          getMirrorPositions(x, y, z, sizeX, sizeZ, symmetryX, symmetryZ).map((p) => ({
+            ...p,
+            paletteIndex,
+          })),
         )
-        setBlocks(entries)
       } else if (tool === 'erase') {
-        const entries = getMirrorPositions(x, y, z, sizeX, sizeZ, symmetryX, symmetryZ).map(
-          (p) => ({ ...p, paletteIndex: 0 }),
+        setBlocks(
+          getMirrorPositions(x, y, z, sizeX, sizeZ, symmetryX, symmetryZ).map((p) => ({
+            ...p,
+            paletteIndex: 0,
+          })),
         )
-        setBlocks(entries)
       } else if (tool === 'pick') {
         const idx = blueprint.structure[y]?.[z]?.[x] ?? 0
         const name = blueprint.palette[idx]?.name
@@ -150,74 +80,99 @@ export function useBlockInteraction() {
       }
     },
     [
-      blueprint, ghostBlueprint, tool, selectedBlockName,
+      blueprint, activeLayer, tool, selectedBlockName,
       symmetryX, symmetryZ, setBlocks, ensurePaletteEntry,
       setTagTargetPos, setSelectedPos,
     ],
   )
 
   const onPointerMove = useCallback(
-    (event: PointerEvent) => {
-      const pos = getRaycastPos(event)
-      setHoverPos(pos ? { x: pos.x, y: pos.y, z: pos.z } : null)
+    (e: ThreeEvent<PointerEvent>) => {
+      const x = Math.floor(e.point.x)
+      const z = Math.floor(e.point.z)
+      setHoverPos({ x, y: activeLayer, z })
 
-      if (isPainting.current && tool === 'paint' && pos) {
-        const key = `${pos.x},${pos.y},${pos.z}`
+      if (isPainting.current) {
+        const key = `${x},${activeLayer},${z}`
         if (!paintVisited.current.has(key)) {
           paintVisited.current.add(key)
-          applyAtPos(pos.x, pos.y, pos.z, pos.isGhost)
+          applyAt(x, z)
         }
       }
     },
-    [getRaycastPos, setHoverPos, tool, applyAtPos],
+    [activeLayer, setHoverPos, applyAt],
   )
 
   const onPointerDown = useCallback(
-    (event: PointerEvent) => {
-      if (event.button !== 0) return
+    (e: ThreeEvent<PointerEvent>) => {
+      if (e.button !== 0) return
 
-      // If dragging a block from palette, place it
-      if (dragging) {
-        const pos = getRaycastPos(event)
-        if (pos) {
-          const paletteIndex = ensurePaletteEntry(dragging.blockName)
-          if (blueprint) {
-            const { sizeX, sizeZ } = blueprint
-            const entries = getMirrorPositions(pos.x, pos.y, pos.z, sizeX, sizeZ, symmetryX, symmetryZ).map(
-              (p) => ({ ...p, paletteIndex }),
-            )
-            setBlocks(entries)
-          }
-          setDragging(null)
-        }
+      dragStart.current = { x: e.clientX, y: e.clientY }
+
+      // Drop a block dragged from the palette
+      if (dragging && blueprint) {
+        const x = Math.floor(e.point.x)
+        const z = Math.floor(e.point.z)
+        const { sizeX, sizeZ } = blueprint
+        const paletteIndex = ensurePaletteEntry(dragging.blockName)
+        setBlocks(
+          getMirrorPositions(x, activeLayer, z, sizeX, sizeZ, symmetryX, symmetryZ).map((p) => ({
+            ...p,
+            paletteIndex,
+          })),
+        )
+        setDragging(null)
         return
       }
 
       if (tool === 'paint') {
         isPainting.current = true
         paintVisited.current.clear()
-        const pos = getRaycastPos(event)
-        if (pos) {
-          paintVisited.current.add(`${pos.x},${pos.y},${pos.z}`)
-          applyAtPos(pos.x, pos.y, pos.z, pos.isGhost)
-        }
-        return
+        const x = Math.floor(e.point.x)
+        const z = Math.floor(e.point.z)
+        paintVisited.current.add(`${x},${activeLayer},${z}`)
+        applyAt(x, z)
       }
-
-      const pos = getRaycastPos(event)
-      if (pos) applyAtPos(pos.x, pos.y, pos.z, pos.isGhost)
     },
     [
-      dragging, getRaycastPos, ensurePaletteEntry, blueprint,
-      symmetryX, symmetryZ, setBlocks, setDragging,
-      tool, applyAtPos,
+      blueprint, activeLayer, dragging, tool,
+      symmetryX, symmetryZ, setBlocks, ensurePaletteEntry,
+      setDragging, applyAt,
     ],
   )
 
-  const onPointerUp = useCallback(() => {
+  const onPointerUp = useCallback(
+    (e: ThreeEvent<PointerEvent>) => {
+      if (e.button !== 0) return
+
+      const wasPainting = isPainting.current
+      isPainting.current = false
+      paintVisited.current.clear()
+
+      if (dragging || wasPainting) {
+        dragStart.current = null
+        return
+      }
+
+      // Click = pointer-up within 5 px of pointer-down
+      if (dragStart.current) {
+        const dx = e.clientX - dragStart.current.x
+        const dy = e.clientY - dragStart.current.y
+        if (Math.sqrt(dx * dx + dy * dy) < 5) {
+          applyAt(Math.floor(e.point.x), Math.floor(e.point.z))
+        }
+      }
+      dragStart.current = null
+    },
+    [dragging, applyAt],
+  )
+
+  const onPointerLeave = useCallback(() => {
+    setHoverPos(null)
     isPainting.current = false
     paintVisited.current.clear()
-  }, [])
+    dragStart.current = null
+  }, [setHoverPos])
 
-  return { onPointerMove, onPointerDown, onPointerUp }
+  return { onPointerMove, onPointerDown, onPointerUp, onPointerLeave }
 }

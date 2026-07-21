@@ -28,19 +28,19 @@ export default function Stage() {
 
   return (
     <group>
-      {/* Platform */}
+      {/* Platform — 1 unit thick so top face aligns with y=0 (where layer-0 blocks sit) */}
       <mesh
         position={[centerX, -0.5, centerZ]}
         receiveShadow
         material={platformMat}
       >
-        <boxGeometry args={[w, 0.2, d]} />
+        <boxGeometry args={[w, 1, d]} />
       </mesh>
 
-      {/* Grid helper */}
+      {/* Grid helper sits on top of the platform (y=0) */}
       <gridHelper
         args={[Math.max(w, d), Math.max(w, d), '#555555', '#333333']}
-        position={[centerX, 0.01, centerZ]}
+        position={[centerX, 0, centerZ]}
       />
     </group>
   )

@@ -28,7 +28,7 @@ export default function App() {
       Array.from({ length: 16 }, () => new Array(16).fill(0)),
     )
     setBlueprint(bp)
-    setActiveLayer(9)
+    setActiveLayer(0)
   }, [setBlueprint, setActiveLayer])
 
   // Keyboard shortcuts

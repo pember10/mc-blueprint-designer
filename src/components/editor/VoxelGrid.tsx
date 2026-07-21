@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
 import { useBlueprintStore } from '@/store/blueprintStore'
 import { useEditorStore } from '@/store/editorStore'
@@ -77,6 +77,8 @@ function InstancedBlockMesh({ positions, color }: InstancedBlockMeshProps) {
     return im
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positions, color])
+
+  useEffect(() => () => (mesh.material as THREE.Material).dispose(), [mesh])
 
   return <primitive object={mesh} />
 }
