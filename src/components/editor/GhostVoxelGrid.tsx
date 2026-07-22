@@ -17,8 +17,8 @@ export default function GhostVoxelGrid() {
   const ghostBlueprint = useBlueprintStore((s) => s.ghostBlueprint)
   const activeBlueprint = useBlueprintStore((s) => s.blueprint)
   const showGhost = useEditorStore((s) => s.showGhost)
-  const ghostOpacity = useEditorStore((s) => s.ghostOpacity)
   const activeLayer = useEditorStore((s) => s.activeLayer)
+  const GHOST_OPACITY = 0.35
 
   const groups = useMemo(() => {
     if (!ghostBlueprint || !showGhost) return new Map<number, THREE.Vector3[]>()
@@ -58,7 +58,7 @@ export default function GhostVoxelGrid() {
             key={paletteIdx}
             positions={positions}
             blockName={blockName}
-            opacity={ghostOpacity}
+            opacity={GHOST_OPACITY}
           />
         )
       })}

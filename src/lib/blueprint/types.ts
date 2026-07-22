@@ -160,4 +160,4 @@ export const MC_TAG_CATALOGUE: McTagMeta[] = [
 // Editor tool modes
 // ---------------------------------------------------------------------------
 
-export type ToolMode = 'select' | 'place' | 'erase' | 'paint' | 'pick' | 'tag'
+export type ToolMode = 'select' | 'place' | 'erase' | 'paint' | 'pick' | 'tag' | 'wand'

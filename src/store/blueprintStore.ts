@@ -119,3 +119,27 @@ export const useBlueprintStore = create<BlueprintStore>()(
 
 // Re-export temporal controls for undo/redo
 export { makeBlueprint, emptyStructure }
+
+/** Create a blank blueprint with specified grid dimensions */
+export function makeEmptyBlueprint(sX: number, sY: number, sZ: number): Blueprint {
+  const bp = makeBlueprint()
+  bp.sizeX = sX
+  bp.sizeY = sY
+  bp.sizeZ = sZ
+  bp.structure = emptyStructure(sX, sY, sZ)
+  return bp
+}
+
+/** Resize an existing blueprint, padding with air or cropping */
+export function resizeBlueprint(bp: Blueprint, newX: number, newY: number, newZ: number): Blueprint {
+  const next = structuredClone(bp)
+  next.sizeX = newX
+  next.sizeY = newY
+  next.sizeZ = newZ
+  next.structure = Array.from({ length: newY }, (_, y) =>
+    Array.from({ length: newZ }, (_, z) =>
+      Array.from({ length: newX }, (_, x) => bp.structure[y]?.[z]?.[x] ?? 0),
+    ),
+  )
+  return next
+}

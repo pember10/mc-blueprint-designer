@@ -10,9 +10,9 @@ const BOX_GEO = new THREE.BoxGeometry(1, 1, 1)
  * Renders all non-air blocks in the active blueprint using one
  * InstancedMesh per unique palette entry (for performance).
  *
- * Only renders blocks at Y <= activeLayer.
+ * Only renders blocks at Y <= activeLayer, unless allLayers=true.
  */
-export default function VoxelGrid() {
+export default function VoxelGrid({ allLayers = false }: { allLayers?: boolean }) {
   const blueprint = useBlueprintStore((s) => s.blueprint)
   const activeLayer = useEditorStore((s) => s.activeLayer)
 
@@ -21,7 +21,8 @@ export default function VoxelGrid() {
     if (!blueprint) return new Map<number, THREE.Vector3[]>()
     const map = new Map<number, THREE.Vector3[]>()
     const { structure, sizeX, sizeY, sizeZ } = blueprint
-    for (let y = 0; y <= Math.min(activeLayer, sizeY - 1); y++) {
+    const maxY = allLayers ? sizeY - 1 : Math.min(activeLayer, sizeY - 1)
+    for (let y = 0; y <= maxY; y++) {
       for (let z = 0; z < sizeZ; z++) {
         for (let x = 0; x < sizeX; x++) {
           const idx = structure[y]?.[z]?.[x] ?? 0

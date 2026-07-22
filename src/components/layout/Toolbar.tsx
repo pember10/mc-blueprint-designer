@@ -1,190 +1,199 @@
 import { useStore } from 'zustand'
-import { useBlueprintStore } from '@/store/blueprintStore'
+import { useBlueprintStore, makeEmptyBlueprint } from '@/store/blueprintStore'
 import { useEditorStore } from '@/store/editorStore'
-import type { ToolMode } from '@/lib/blueprint/types'
 import { openBlueprintFile, downloadBlueprint } from '@/lib/io/localIO'
-import { makeBlueprint } from '@/store/blueprintStore'
 
-const TOOLS: { mode: ToolMode; label: string; shortcut: string }[] = [
-  { mode: 'select', label: 'Select', shortcut: 'S' },
-  { mode: 'place', label: 'Place', shortcut: 'P' },
-  { mode: 'erase', label: 'Erase', shortcut: 'E' },
-  { mode: 'paint', label: 'Paint', shortcut: 'B' },
-  { mode: 'pick', label: 'Pick', shortcut: 'I' },
-  { mode: 'tag', label: 'Tag', shortcut: 'T' },
-]
+
+const LEVELS = [1, 2, 3, 4, 5]
 
 export default function Toolbar() {
-  const tool = useEditorStore((s) => s.tool)
-  const setTool = useEditorStore((s) => s.setTool)
-  const symmetryX = useEditorStore((s) => s.symmetryX)
-  const symmetryZ = useEditorStore((s) => s.symmetryZ)
-  const toggleSymmetryX = useEditorStore((s) => s.toggleSymmetryX)
-  const toggleSymmetryZ = useEditorStore((s) => s.toggleSymmetryZ)
-  const showGhost = useEditorStore((s) => s.showGhost)
-  const ghostOpacity = useEditorStore((s) => s.ghostOpacity)
-  const setShowGhost = useEditorStore((s) => s.setShowGhost)
-  const setGhostOpacity = useEditorStore((s) => s.setGhostOpacity)
-  const activeLayer = useEditorStore((s) => s.activeLayer)
-  const setActiveLayer = useEditorStore((s) => s.setActiveLayer)
-
-  const setBlueprint = useBlueprintStore((s) => s.setBlueprint)
   const blueprint = useBlueprintStore((s) => s.blueprint)
-  const ghostLevel = useBlueprintStore((s) => s.ghostLevel)
-
+  const setBlueprint = useBlueprintStore((s) => s.setBlueprint)
+  const setGhost = useBlueprintStore((s) => s.setGhost)
+  const currentLevel = useEditorStore((s) => s.currentLevel)
+  const setCurrentLevel = useEditorStore((s) => s.setCurrentLevel)
+  const setActiveLayer = useEditorStore((s) => s.setActiveLayer)
+  const settings = useEditorStore((s) => s.settings)
+  const showToast = useEditorStore((s) => s.showToast)
+  const setShowSettings = useEditorStore((s) => s.setShowSettings)
+  const setShowResourcePack = useEditorStore((s) => s.setShowResourcePack)
   // Undo / redo from zundo temporal store
   const undo = () => useBlueprintStore.temporal.getState().undo()
   const redo = () => useBlueprintStore.temporal.getState().redo()
   const canUndo = useStore(useBlueprintStore.temporal, (s) => s.pastStates.length > 0)
   const canRedo = useStore(useBlueprintStore.temporal, (s) => s.futureStates.length > 0)
 
+  const fileName = blueprint?.meta.fileName ?? 'untitled'
+
   const handleNew = () => {
-    const bp = makeBlueprint()
-    bp.sizeX = 16
-    bp.sizeY = 10
-    bp.sizeZ = 16
-    bp.structure = Array.from({ length: 10 }, () =>
-      Array.from({ length: 16 }, () => new Array(16).fill(0)),
-    )
+    const { gridX, gridZ, maxY } = settings
+    const bp = makeEmptyBlueprint(gridX, maxY, gridZ)
     setBlueprint(bp)
+    setCurrentLevel(1)
+    setActiveLayer(0)
   }
 
   const handleOpen = async () => {
     try {
       const bp = await openBlueprintFile()
       setBlueprint(bp)
-      setActiveLayer(bp.sizeY - 1)
-    } catch (e) {
-      console.error('Failed to open blueprint:', e)
+      // Update settings to match loaded blueprint dimensions
+      setActiveLayer(0)
+      showToast(`Opened ${bp.meta.fileName || 'blueprint'}`)
+    } catch {
+      // user cancelled or error
     }
   }
 
-  const handleDownload = () => {
-    if (!blueprint) return
-    downloadBlueprint(blueprint)
+  const handleLoadGhost = async () => {
+    try {
+      const bp = await openBlueprintFile()
+      const match = bp.meta.fileName?.match(/(\d+)/)
+      const level = match ? parseInt(match[1]) : null
+      setGhost(bp, level)
+      showToast(`Ghost loaded: Level ${level ?? '?'}`)
+    } catch {
+      // user cancelled
+    }
   }
 
-  const maxLayer = blueprint ? blueprint.sizeY - 1 : 0
+  const handleExport = () => {
+    if (!blueprint) return
+    // Update fileName from metadata before exporting
+    const exported = { ...blueprint }
+    downloadBlueprint(exported)
+    showToast(`Exported ${exported.meta.fileName || 'blueprint'}.blueprint`)
+  }
+
+  const handleLevelClick = async (lvl: number) => {
+    if (lvl === currentLevel) return
+    // In a full implementation, prompt to save current level first.
+    // For now, load a new file for the selected level.
+    try {
+      const bp = await openBlueprintFile()
+      setBlueprint(bp)
+      setCurrentLevel(lvl)
+      setActiveLayer(0)
+      showToast(`Loaded Level ${lvl}`)
+    } catch {
+      // user cancelled — don't switch level
+    }
+  }
 
   return (
-    <div className="flex items-center gap-3 px-3 h-12 bg-zinc-900 border-b border-zinc-700 shrink-0 overflow-x-auto">
-      {/* File actions */}
-      <div className="flex gap-1">
-        <ToolbarBtn onClick={handleNew}>New</ToolbarBtn>
-        <ToolbarBtn onClick={handleOpen}>Open</ToolbarBtn>
-        <ToolbarBtn onClick={handleDownload} disabled={!blueprint}>Export</ToolbarBtn>
+    <div style={{
+      minHeight: 64, flexShrink: 0,
+      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 18px',
+      padding: '10px 22px',
+      background: '#1c1c1f', borderBottom: '1px solid #2c2c30',
+    }}>
+      {/* Logo + title */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 15, color: '#fff' }}>
+        <div style={{ width: 26, height: 26, borderRadius: 7, background: 'linear-gradient(135deg,#8a6fd6,#6a52b0)' }} />
+        Blueprint Editor
       </div>
 
-      <Divider />
+      {/* File name */}
+      <div style={{ color: '#7a7880', fontSize: 12.5, paddingLeft: 8, borderLeft: '1px solid #33333a' }}>
+        {fileName ? `${fileName}${currentLevel}.blueprint` : 'new.blueprint'}
+      </div>
 
       {/* Undo / Redo */}
-      <div className="flex gap-1">
-        <ToolbarBtn onClick={undo} disabled={!canUndo} title="Ctrl+Z">
-          ↩ Undo
-        </ToolbarBtn>
-        <ToolbarBtn onClick={redo} disabled={!canRedo} title="Ctrl+Y">
-          ↪ Redo
-        </ToolbarBtn>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <TBtn onClick={undo} disabled={!canUndo}>Undo</TBtn>
+        <TBtn onClick={redo} disabled={!canRedo}>Redo</TBtn>
       </div>
 
-      <Divider />
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
 
-      {/* Tool modes */}
-      <div className="flex gap-1">
-        {TOOLS.map(({ mode, label, shortcut }) => (
-          <ToolbarBtn
-            key={mode}
-            active={tool === mode}
-            onClick={() => setTool(mode)}
-            title={`${label} (${shortcut})`}
-          >
-            {label}
-          </ToolbarBtn>
-        ))}
+      {/* Level tabs */}
+      <div style={{ display: 'flex', gap: 5, background: '#232326', padding: 4, borderRadius: 10 }}>
+        {LEVELS.map((lvl) => {
+          const active = lvl === currentLevel
+          return (
+            <button
+              key={lvl}
+              onClick={() => handleLevelClick(lvl)}
+              title={lvl === currentLevel ? `Level ${lvl} (current)` : `Load Level ${lvl}`}
+              style={{
+                border: 'none', borderRadius: '50%', width: 38, height: 38, flexShrink: 0,
+                fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                background: active ? '#8a6fd6' : 'transparent',
+                color: active ? '#fff' : '#6a6870',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {lvl}
+            </button>
+          )
+        })}
       </div>
 
-      <Divider />
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
 
-      {/* Symmetry */}
-      <div className="flex gap-1 items-center">
-        <span className="text-zinc-400 text-xs">Sym:</span>
-        <ToolbarBtn active={symmetryX} onClick={toggleSymmetryX} title="Mirror X axis (X)">
-          ↔ X
-        </ToolbarBtn>
-        <ToolbarBtn active={symmetryZ} onClick={toggleSymmetryZ} title="Mirror Z axis (Z)">
-          ↕ Z
-        </ToolbarBtn>
-      </div>
-
-      <Divider />
-
-      {/* Y Layer */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-zinc-400 text-xs">Layer:</span>
+      {/* File / settings buttons */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <TBtn onClick={handleNew}>New</TBtn>
+        <TBtn onClick={handleOpen}>Open…</TBtn>
+        <TBtn onClick={handleLoadGhost}>Ghost…</TBtn>
+        <TBtn onClick={() => setShowResourcePack(true)}>Import Resource Pack</TBtn>
         <button
-          className="w-5 h-5 rounded bg-zinc-700 text-zinc-200 text-xs hover:bg-zinc-600 disabled:opacity-30"
-          onClick={() => setActiveLayer(Math.max(0, activeLayer - 1))}
-          disabled={activeLayer <= 0}
+          onClick={handleExport}
+          disabled={!blueprint}
+          style={{
+            background: '#8a6fd6', color: '#fff', border: 'none',
+            borderRadius: 7, padding: '9px 16px', fontSize: 12.5, fontWeight: 600,
+            cursor: blueprint ? 'pointer' : 'default', opacity: blueprint ? 1 : 0.5,
+            whiteSpace: 'nowrap',
+          }}
         >
-          −
+          Export .blueprint
         </button>
-        <span className="text-zinc-100 text-xs w-6 text-center">{activeLayer}</span>
         <button
-          className="w-5 h-5 rounded bg-zinc-700 text-zinc-200 text-xs hover:bg-zinc-600 disabled:opacity-30"
-          onClick={() => setActiveLayer(Math.min(maxLayer, activeLayer + 1))}
-          disabled={activeLayer >= maxLayer}
+          onClick={() => setShowSettings(true)}
+          title="Settings"
+          style={{
+            width: 36, height: 36, flexShrink: 0,
+            border: '1px solid #33333a', borderRadius: 8,
+            background: '#232326', color: '#c8c6cf',
+            fontSize: 15, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
         >
-          +
+          ⚙
         </button>
-        <span className="text-zinc-500 text-xs">/ {maxLayer}</span>
-      </div>
-
-      <Divider />
-
-      {/* Ghost */}
-      <div className="flex items-center gap-1.5">
-        <ToolbarBtn active={showGhost} onClick={() => setShowGhost(!showGhost)} title="Toggle ghost (G)">
-          👻 Ghost{ghostLevel !== null ? ` (L${ghostLevel})` : ''}
-        </ToolbarBtn>
-        {showGhost && (
-          <input
-            type="range"
-            min={0}
-            max={50}
-            value={Math.round(ghostOpacity * 100)}
-            onChange={(e) => setGhostOpacity(Number(e.target.value) / 100)}
-            className="w-16 accent-indigo-500"
-            title="Ghost opacity"
-          />
-        )}
       </div>
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Tiny sub-components
-// ---------------------------------------------------------------------------
-
-interface ToolbarBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  active?: boolean
-}
-
-function ToolbarBtn({ active, className = '', children, ...rest }: ToolbarBtnProps) {
+// Small toolbar button
+function TBtn({
+  children,
+  onClick,
+  disabled,
+  title,
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  title?: string
+}) {
   return (
     <button
-      className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-        active
-          ? 'bg-indigo-600 text-white'
-          : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
-      } disabled:opacity-30 ${className}`}
-      {...rest}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{
+        background: '#232326', color: disabled ? '#5a5860' : '#c8c6cf',
+        border: '1px solid #33333a', borderRadius: 7,
+        padding: '9px 14px', fontSize: 12.5, cursor: disabled ? 'default' : 'pointer',
+        whiteSpace: 'nowrap',
+      }}
     >
       {children}
     </button>
   )
-}
-
-function Divider() {
-  return <div className="w-px h-6 bg-zinc-700" />
 }

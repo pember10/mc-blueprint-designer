@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics="">
+<style>
+body{margin:0;background:#151517}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#3a3a40;border-radius:5px}
+::-webkit-scrollbar-track{background:#1a1a1d}
+input[type=range]{accent-color:#8a6fd6}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+</style>
+</helmet>
+<div style="position:fixed;inset:0;display:flex;flex-direction:column;background:#151517;color:#e8e6e3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;font-size:13px">
+
+<sc-if value="{{showMissingModsBanner}}" hint-placeholder-val="{{false}}">
+<div style="flex:none;display:flex;align-items:center;gap:14px;padding:9px 20px;background:#3a2e15;border-bottom:1px solid #5a4620;color:#f0c96a;font-size:12.5px">
+<span style="font-weight:700">⚠ Missing mods</span>
+<span style="opacity:.9">{{missingModsText}}</span>
+<div style="flex:1"></div>
+<button onClick="{{addMissingModsToRequired}}" style="background:#5a4620;color:#f0c96a;border:1px solid #7a6030;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">Add to Required Mods</button>
+</div>
+</sc-if>
+
+
+
+<div style="min-height:64px;flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;padding:10px 22px;background:#1c1c1f;border-bottom:1px solid #2c2c30">
+<div style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:#fff">
+<div style="width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#8a6fd6,#6a52b0)"></div>
+Blueprint Editor
+</div>
+<div style="color:#7a7880;font-size:12.5px;padding-left:8px;border-left:1px solid #33333a">{{metadata.fileName}}</div>
+<div style="box-sizing: border-box; display: flex; flex-direction: row; gap: 8px; justify-content: normal; align-items: center"><button onClick="{{undo}}" style="background:#232326;color:#c8c6cf;border:1px solid #33333a;border-radius:7px;padding:9px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap">Undo</button><button onClick="{{redo}}" style="background:#232326;color:#c8c6cf;border:1px solid #33333a;border-radius:7px;padding:9px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap">Redo</button></div><div style="flex:1"></div>
+<div style="display:flex;gap:5px;background:#232326;padding:4px;border-radius:10px">
+<sc-for list="{{levelTabs}}" as="lvl" hint-placeholder-count="5">
+<button onClick="{{lvl.select}}" style="border:none;border-radius:50%;width:38px;height:38px;flex:none;font-size:12.5px;font-weight:700;cursor:pointer;background:{{lvl.bg}};color:{{lvl.fg}};display:flex;align-items:center;justify-content:center">{{lvl.label}}</button>
+</sc-for>
+</div>
+<div style="flex:1"></div>
+<div style="display:flex;gap:8px;align-items:center">
+
+
+
+<button onClick="{{openResourcePack}}" style="background:#232326;color:#c8c6cf;border:1px solid #33333a;border-radius:7px;padding:9px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap">Import Resource Pack</button>
+<button onClick="{{exportBlueprint}}" style="background:#8a6fd6;color:#fff;border:none;border-radius:7px;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">Export .blueprint</button><button onClick="{{openSettings}}" title="Settings" style="width:36px;height:36px;flex:none;border:1px solid #33333a;border-radius:8px;background:#232326;color:#c8c6cf;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚙</button>
+</div>
+</div><div style="flex:1;display:flex;min-height:0;height:0">
+
+<div style="width:224px;flex:none;background:#19191c;border-right:1px solid #2c2c30;padding:18px 16px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;overflow-x:hidden">
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#6a6870;padding:0 2px 2px">TOOLS</div>
+<div style="min-height:58px;background:#1f1f23;border:1px solid #2c2c30;border-radius:8px;padding:9px 10px">
+<sc-if value="{{tooltipInfo}}" hint-placeholder-val="{{null}}">
+<div style="font-size:11.5px;font-weight:700;color:#e8e6e3;margin-bottom:3px">{{tooltipInfo.label}}</div>
+<div style="font-size:11px;color:#8a8892;line-height:1.4">{{tooltipInfo.desc}}</div>
+</sc-if>
+<sc-if value="{{tooltipInfoNot}}" hint-placeholder-val="{{true}}">
+<div style="font-size:11px;color:#5a5860">Hover a tool for details.</div>
+</sc-if>
+</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+<sc-for list="{{modeTools}}" as="t" hint-placeholder-count="7">
+<button onClick="{{t.select}}" onMouseEnter="{{t.hoverOn}}" onMouseLeave="{{hoverOff}}" style="aspect-ratio:1;border:none;border-radius:8px;cursor:pointer;background:{{t.bg}};color:{{t.fg}};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">{{t.mono}}</button>
+</sc-for>
+</div>
+
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#6a6870;padding:10px 2px 2px">REGION</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+<sc-for list="{{regionActions}}" as="a" hint-placeholder-count="5">
+<button onClick="{{a.run}}" onMouseEnter="{{a.hoverOn}}" onMouseLeave="{{hoverOff}}" disabled="{{a.disabled}}" style="aspect-ratio:1;border:none;border-radius:8px;cursor:pointer;background:{{a.bg}};color:{{a.fg}};opacity:{{a.opacity}};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">{{a.mono}}</button>
+</sc-for>
+</div>
+
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#6a6870;padding:10px 2px 2px">CLIPBOARD</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+<sc-for list="{{clipboardActions}}" as="a" hint-placeholder-count="5">
+<button onClick="{{a.run}}" onMouseEnter="{{a.hoverOn}}" onMouseLeave="{{hoverOff}}" disabled="{{a.disabled}}" style="aspect-ratio:1;border:none;border-radius:8px;cursor:pointer;background:{{a.bg}};color:{{a.fg}};opacity:{{a.opacity}};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">{{a.mono}}</button>
+</sc-for>
+</div>
+
+
+
+<sc-if value="{{hasSelection}}" hint-placeholder-val="{{false}}">
+<button onClick="{{deselectSelection}}" style="border:1px solid #33333a;border-radius:7px;padding:9px 0;font-size:11.5px;cursor:pointer;background:transparent;color:#8a8892">Deselect ({{selectionSizeLabel}})</button>
+</sc-if>
+
+<div style="height:1px;background:#2c2c30;margin:8px 0"></div>
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#6a6870;padding:0 2px 2px">SYMMETRY</div>
+<div style="display:flex;gap:8px">
+<button onClick="{{toggleSymX}}" style="flex:1;border:none;border-radius:7px;padding:10px 0;font-size:12.5px;font-weight:600;cursor:pointer;background:{{symXBg}};color:#fff">Mirror X</button>
+<button onClick="{{toggleSymZ}}" style="flex:1;border:none;border-radius:7px;padding:10px 0;font-size:12.5px;font-weight:600;cursor:pointer;background:{{symZBg}};color:#fff">Mirror Z</button>
+</div>
+
+
+<div style="height:1px;background:#2c2c30;margin:8px 0"></div>
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#6a6870;padding:0 2px 2px">GHOST OVERLAY</div>
+<button onClick="{{toggleGhost}}" style="display:flex;align-items:center;justify-content:space-between;border:1px solid #33333a;border-radius:7px;padding:9px 12px;font-size:12.5px;cursor:pointer;background:#232326;color:#c8c6cf">
+<span>Show previous level</span>
+<span style="width:34px;height:18px;border-radius:9px;position:relative;background:{{ghostEnabled}}"></span>
+</button>
+<sc-if value="{{ghostAvailable}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;align-items:center;gap:8px;padding:0 2px">
+<span style="font-size:11.5px;color:#8a8892">Ghost from</span>
+<select onChange="{{setGhostLevel}}" style="flex:1;background:#232326;color:#e8e6e3;border:1px solid #33333a;border-radius:6px;padding:6px 8px;font-size:12px">
+<sc-for list="{{ghostLevelOptions}}" as="gl" hint-placeholder-count="4">
+<option value="{{gl}}">Level {{gl}}</option>
+</sc-for>
+</select>
+</div>
+</sc-if>
+<sc-if value="{{ghostAvailableNot}}" hint-placeholder-val="{{true}}">
+<div style="font-size:11px;color:#6a6870;padding:0 2px">Level 1 has no prior level to ghost.</div>
+</sc-if>
+</div>
+
+<div style="flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative">
+<div style="flex:none;padding:12px 18px;border-bottom:1px solid #2c2c30;font-size:12px;font-weight:700;color:#c8c6cf;letter-spacing:.03em">LAYER GRID — Y: {{activeLayer}}</div>
+<div ref="{{setGridContainer}}" style="flex:1;min-height:0;width:100%;overflow:hidden;padding:8px;display:flex;align-items:center;justify-content:center">
+<div style="flex:none;transform:scale({{gridScale}});transform-origin:center center">
+<div onMouseUp="{{onGridMouseUp}}" onMouseLeave="{{onGridMouseLeave}}" style="display:grid;grid-template-columns:repeat({{GX}},30px);gap:2px;background:#0d0d0f;padding:10px;border-radius:3px">
+<sc-for list="{{gridCells}}" as="cell" hint-placeholder-count="64">
+<div onMouseDown="{{cell.onDown}}" onMouseEnter="{{cell.onEnter}}" style="width:30px;height:30px;position:relative;cursor:pointer;background:{{cell.bg}};background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 3px,transparent 3px 6px);border:{{cell.borderWidthThin}} solid {{cell.border}};box-shadow:{{cell.highlightGlow}};box-sizing:border-box;border-radius:1px">
+<div style="position:absolute;inset:0;background-image:{{cell.bgImage}};background-size:cover;image-rendering:pixelated;pointer-events:none"></div>
+<sc-if value="{{cell.tagColor}}" hint-placeholder-val="{{null}}">
+<div style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:3px;background:{{cell.tagColor}};color:#161616;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center">{{cell.tagLetter}}</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div style="flex:none;display:flex;align-items:center;gap:14px;padding:10px 18px;border-top:1px solid #2c2c30;background:#17171a">
+<div style="font-size:11px;color:#8a8892;white-space:nowrap">LAYER (Y: {{activeLayer}})</div>
+<input type="range" min="0" max="{{GYmax}}" value="{{activeLayer}}" onChange="{{setActiveLayer}}" style="flex:1">
+<div style="font-size:10.5px;color:#5a5860;white-space:nowrap">Blocks at or below this layer are shown &amp; editable</div>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:18px;padding:8px 18px;border-top:1px solid #2c2c30;background:#17171a;font-size:11.5px;color:#9a98a3">
+<span><strong style="color:#e8e6e3">{{blockCount}}</strong> blocks placed</span>
+<span style="color:#3a3a40">|</span>
+<span>Footprint mismatch: <strong style="color:{{footprintMismatchColor}}">{{footprintMismatchLabel}}</strong></span>
+<span style="color:#3a3a40">|</span>
+<span>Top issue: <strong style="color:{{worstIssueColor}}">{{worstIssueLabel}}</strong></span>
+<div style="flex:1"></div>
+</div>
+
+<div style="position:absolute;top:16px;right:16px;width:33%;min-width:230px;max-width:340px;background:rgba(26,26,29,.94);border:1px solid #33333a;border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.5);overflow:hidden;backdrop-filter:blur(6px)">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid #2c2c30">
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#c8c6cf">3D PREVIEW — L{{currentLevel}}</div>
+<button onClick="{{openIsoModal}}" style="border:none;background:#2c2c30;color:#c8c6cf;border-radius:5px;padding:5px 9px;font-size:10.5px;cursor:pointer;font-weight:600">⤢ Expand</button>
+</div>
+<div ref="{{setIsoContainer}}" style="height:170px;width:100%;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 20%,#1d1d21,#131315);display:flex;align-items:center;justify-content:center">
+<div style="position:relative;width:360px;height:290px;flex:none;transform:scale({{isoScale}});transform-origin:center center">
+<sc-for list="{{isoCubes}}" as="cube" hint-placeholder-count="30">
+<div style="position:absolute;left:0;top:0;opacity:{{cube.opacity}}">
+<div style="position:absolute;width:46px;height:24px;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);left:{{cube.left}}px;top:{{cube.top}}px;background:{{cube.topColor}}"></div>
+<div style="position:absolute;width:24px;height:31px;clip-path:polygon(100% 0%,0% 37.9%,0% 100%,100% 62.1%);left:{{cube.left}}px;top:{{cube.top}}px;background:{{cube.westColor}}"></div>
+<div style="position:absolute;width:24px;height:31px;clip-path:polygon(0% 0%,100% 37.9%,100% 100%,0% 62.1%);left:{{cube.eastLeft}}px;top:{{cube.top}}px;background:{{cube.eastColor}}"></div>
+</div>
+</sc-for>
+<sc-if value="{{hoverCubeStyle}}" hint-placeholder-val="{{null}}">
+<div style="position:absolute;width:44px;height:22px;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);left:{{hoverCubeStyle.left}}px;top:{{hoverCubeStyle.top}}px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.55);box-sizing:border-box;pointer-events:none"></div>
+</sc-if>
+</div>
+</div>
+</div>
+
+<sc-if value="{{showIsoModal}}" hint-placeholder-val="{{false}}">
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:60">
+<div style="width:74vw;max-width:900px;height:74vh;max-height:720px;background:#1c1c1f;border:1px solid #33333a;border-radius:12px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #2c2c30;flex:none">
+<div style="font-size:13.5px;font-weight:700;color:#e8e6e3">3D Preview — Level {{currentLevel}}</div>
+<div style="display:flex;gap:8px;align-items:center">
+<button onClick="{{rotateLeft}}" style="border:1px solid #33333a;border-radius:7px;padding:8px 12px;background:#232326;color:#c8c6cf;font-size:12.5px;cursor:pointer">⟲ Rotate</button>
+<button onClick="{{rotateRight}}" style="border:1px solid #33333a;border-radius:7px;padding:8px 12px;background:#232326;color:#c8c6cf;font-size:12.5px;cursor:pointer">Rotate ⟳</button>
+<button onClick="{{closeIsoModal}}" style="border:none;border-radius:7px;padding:8px 14px;background:#8a6fd6;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer">Close</button>
+</div>
+</div>
+<div ref="{{setIsoModalContainer}}" style="flex:1;min-height:0;width:100%;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 20%,#1d1d21,#131315);display:flex;align-items:center;justify-content:center">
+<div style="position:relative;width:360px;height:290px;flex:none;transform:scale({{isoScaleModal}});transform-origin:center center">
+<sc-for list="{{isoCubes}}" as="cube" hint-placeholder-count="30">
+<div style="position:absolute;left:0;top:0;opacity:{{cube.opacity}}">
+<div style="position:absolute;width:46px;height:24px;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);left:{{cube.left}}px;top:{{cube.top}}px;background:{{cube.topColor}}"></div>
+<div style="position:absolute;width:24px;height:31px;clip-path:polygon(100% 0%,0% 37.9%,0% 100%,100% 62.1%);left:{{cube.left}}px;top:{{cube.top}}px;background:{{cube.westColor}}"></div>
+<div style="position:absolute;width:24px;height:31px;clip-path:polygon(0% 0%,100% 37.9%,100% 100%,0% 62.1%);left:{{cube.eastLeft}}px;top:{{cube.top}}px;background:{{cube.eastColor}}"></div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+</div>
+
+<div style="width:344px;flex:none;background:#19191c;border-left:1px solid #2c2c30;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;border-bottom:1px solid #2c2c30;flex:none;overflow-x:auto">
+<button onClick="{{setRailTabPalette}}" style="flex:none;min-width:78px;border:none;background:{{railTabPaletteBg}};color:{{railTabPaletteFg}};padding:13px 14px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:2px solid {{railTabPaletteBorder}};white-space:nowrap">Palette</button>
+<button onClick="{{setRailTabMetadata}}" style="flex:none;min-width:78px;border:none;background:{{railTabMetadataBg}};color:{{railTabMetadataFg}};padding:13px 14px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:2px solid {{railTabMetadataBorder}};white-space:nowrap">Metadata</button>
+<button onClick="{{setRailTabBlockList}}" style="flex:none;min-width:78px;border:none;background:{{railTabBlockListBg}};color:{{railTabBlockListFg}};padding:13px 14px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:2px solid {{railTabBlockListBorder}};white-space:nowrap">Block List</button>
+<button onClick="{{setRailTabPackBuildings}}" style="flex:none;min-width:78px;border:none;background:{{railTabPackBuildingsBg}};color:{{railTabPackBuildingsFg}};padding:13px 14px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:2px solid {{railTabPackBuildingsBorder}};white-space:nowrap">Pack Buildings</button>
+<button onClick="{{setRailTabValidation}}" style="flex:none;min-width:78px;border:none;background:{{railTabValidationBg}};color:{{railTabValidationFg}};padding:13px 14px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:2px solid {{railTabValidationBorder}};white-space:nowrap">Validation</button>
+</div>
+<div style="flex:1;overflow-y:auto;padding:18px">
+
+<sc-if value="{{isPalette}}" hint-placeholder-val="{{true}}">
+<sc-if value="{{toolIsSelectMode}}" hint-placeholder-val="{{false}}">
+<div style="background:#232326;border:1px solid #33333a;border-radius:8px;padding:14px;margin-bottom:16px">
+<div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#8f7bd9;margin-bottom:8px">INSPECTOR</div>
+<sc-if value="{{inspectedInfo}}" hint-placeholder-val="{{null}}">
+<div style="font-size:12.5px;color:#e8e6e3;margin-bottom:2px">{{inspectedInfo.name}}</div>
+<div style="font-size:11px;color:#8a8892;font-family:ui-monospace,monospace;margin-bottom:6px">{{inspectedInfo.id}}</div>
+<div style="font-size:11px;color:#8a8892">Position ({{inspectedInfo.x}}, {{inspectedInfo.y}}, {{inspectedInfo.z}}) · {{inspectedInfo.mod}}</div>
+</sc-if>
+<sc-if value="{{inspectedInfoNot}}" hint-placeholder-val="{{true}}">
+<div style="font-size:12px;color:#6a6870">Click a block in the layer grid to inspect it.</div>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{toolIsTag}}" hint-placeholder-val="{{false}}">
+<div style="background:#232326;border:1px solid #33333a;border-radius:8px;padding:14px;margin-bottom:16px">
+<div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#8f7bd9;margin-bottom:8px">TAG INSPECTOR</div>
+<sc-if value="{{taggedCellInfo}}" hint-placeholder-val="{{null}}">
+<div style="font-size:12.5px;color:#e8e6e3;margin-bottom:10px">{{taggedCellInfo.blockName}} <span style="color:#6a6870">({{taggedCellInfo.x}}, {{taggedCellInfo.y}}, {{taggedCellInfo.z}})</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<sc-for list="{{tagDefs}}" as="t" hint-placeholder-count="6">
+<button onClick="{{t.assign}}" style="border:none;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer;background:{{t.bg}};color:{{t.fg}}">{{t.label}}</button>
+</sc-for>
+<button onClick="{{clearTag}}" style="border:1px solid #3a3a40;border-radius:6px;padding:6px 10px;font-size:11.5px;cursor:pointer;background:transparent;color:#8a8892">Clear</button>
+</div>
+</sc-if>
+<sc-if value="{{taggedCellInfoNot}}" hint-placeholder-val="{{true}}">
+<div style="font-size:12px;color:#6a6870">Click a non-air block in the layer grid to assign it a function tag.</div>
+</sc-if>
+</div>
+</sc-if>
+
+<input value="{{search}}" onChange="{{setSearch}}" placeholder="Search blocks…" style="width:100%;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:9px 12px;color:#e8e6e3;font-size:12.5px;margin-bottom:10px">
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+<sc-for list="{{modChips}}" as="m" hint-placeholder-count="5">
+<button onClick="{{m.select}}" style="border:none;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer;background:{{m.bg}};color:{{m.fg}}">{{m.label}}</button>
+</sc-for>
+</div>
+<sc-if value="{{resourcePackLoaded}}" hint-placeholder-val="{{false}}">
+<div style="font-size:11px;color:#7cc78a;margin-bottom:10px">✓ {{rpMatchedCount}} textures matched</div>
+</sc-if>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+<sc-for list="{{paletteList}}" as="b" hint-placeholder-count="28">
+<button onClick="{{b.select}}" title="{{b.id}}" style="display:flex;flex-direction:column;align-items:center;gap:5px;border:2px solid {{b.borderColor}};border-radius:8px;padding:8px 4px;background:#1f1f23;cursor:pointer">
+<div style="width:32px;height:32px;border-radius:5px;background:{{b.color}};background-image:{{b.bgImage}};background-size:cover;image-rendering:pixelated"></div>
+<div style="font-size:9.5px;color:#c8c6cf;text-align:center;line-height:1.2">{{b.name}}</div>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isMetadata}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div>
+<div style="font-size:11px;color:#8a8892;margin-bottom:5px">Name</div>
+<input value="{{metaName}}" onChange="{{setMetaName}}" style="width:100%;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:8px 10px;color:#e8e6e3;font-size:12.5px">
+</div>
+<div>
+<div style="font-size:11px;color:#8a8892;margin-bottom:5px">Hut type</div>
+<select value="{{hutType}}" onChange="{{setHutType}}" style="width:100%;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:8px 10px;color:#e8e6e3;font-size:12.5px">
+<sc-for list="{{hutTypeOptions}}" as="h" hint-placeholder-count="6">
+<option value="{{h.id}}">{{h.label}}</option>
+</sc-for>
+</select>
+</div>
+<div>
+<div style="font-size:11px;color:#8a8892;margin-bottom:5px">File name</div>
+<div style="width:100%;box-sizing:border-box;background:#1a1a1d;border:1px solid #2c2c30;border-radius:7px;padding:8px 10px;color:#8a8892;font-size:12.5px;font-family:ui-monospace,monospace">{{metaFileName}}</div>
+</div>
+<div>
+<div style="font-size:11px;color:#8a8892;margin-bottom:5px">Pack name</div>
+<input value="{{metaPackName}}" onChange="{{setMetaPackName}}" style="width:100%;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:8px 10px;color:#e8e6e3;font-size:12.5px">
+</div>
+<div>
+<div style="font-size:11px;color:#8a8892;margin-bottom:5px">MC version</div>
+<input value="{{metaMcVersion}}" onChange="{{setMetaMcVersion}}" style="width:100%;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:8px 10px;color:#e8e6e3;font-size:12.5px">
+</div>
+<div>
+<div style="font-size:11px;color:#8a8892;margin-bottom:5px">Primary offset (anchor)</div>
+<div style="display:flex;gap:6px">
+<input type="number" value="{{offsetX}}" onChange="{{setOffsetX}}" style="width:100%;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:8px 8px;color:#e8e6e3;font-size:12.5px">
+<input type="number" value="{{offsetY}}" onChange="{{setOffsetY}}" style="width:100%;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:8px 8px;color:#e8e6e3;font-size:12.5px">
+<input type="number" value="{{offsetZ}}" onChange="{{setOffsetZ}}" style="width:100%;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:8px 8px;color:#e8e6e3;font-size:12.5px">
+</div>
+</div>
+<div>
+<div style="font-size:11px;color:#8a8892;margin-bottom:5px">Required mods</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+<sc-for list="{{requiredModsChips}}" as="m" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:6px;background:#232326;border:1px solid #33333a;border-radius:6px;padding:5px 6px 5px 10px;font-size:11.5px;color:#c8c6cf">{{m.label}}<span onClick="{{m.remove}}" style="cursor:pointer;color:#8a8892;padding:0 3px">×</span></div>
+</sc-for>
+</div>
+<div style="display:flex;gap:6px">
+<input value="{{newModInput}}" onChange="{{setNewModInput}}" placeholder="mod_id" style="flex:1;box-sizing:border-box;background:#232326;border:1px solid #33333a;border-radius:7px;padding:8px 10px;color:#e8e6e3;font-size:12px">
+<button onClick="{{addNewMod}}" style="border:none;border-radius:7px;padding:0 14px;background:#8a6fd6;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Add</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isBlockList}}" hint-placeholder-val="{{false}}">
+<div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#6a6870;margin-bottom:12px">LEVEL {{currentLevel}} — {{blockCount}} BLOCKS</div>
+<sc-for list="{{blockListGroups}}" as="grp" hint-placeholder-count="4">
+<div style="margin-bottom:16px">
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:{{grp.modColor}};margin-bottom:8px">{{grp.modLabel}}</div>
+<sc-for list="{{grp.items}}" as="it" hint-placeholder-count="6">
+<div onClick="{{it.jump}}" style="display:flex;align-items:center;gap:10px;padding:7px 8px;margin:0 -8px;border-radius:6px;border-bottom:1px solid #232326;cursor:pointer;background:{{it.rowBg}}">
+<div style="width:20px;height:20px;border-radius:4px;flex:none;background:{{it.color}}"></div>
+<div style="flex:1;font-size:12.5px;color:#e8e6e3">{{it.name}}</div>
+<div style="font-size:11.5px;color:#8a8892;font-family:ui-monospace,monospace">×{{it.count}}</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+<sc-if value="{{blockListEmpty}}" hint-placeholder-val="{{false}}">
+<div style="font-size:12.5px;color:#6a6870;padding:20px 0;text-align:center">No blocks placed on this level yet.</div>
+</sc-if>
+<div style="height:1px;background:#2c2c30;margin:6px 0 14px"></div>
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#6a6870;margin-bottom:8px">REQUIRED MODS</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<sc-for list="{{requiredModsChips}}" as="m" hint-placeholder-count="2">
+<div style="background:#232326;border:1px solid #33333a;border-radius:6px;padding:5px 10px;font-size:11.5px;color:#c8c6cf">{{m.label}}</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isPackBuildings}}" hint-placeholder-val="{{false}}">
+<sc-for list="{{packBuildingGroups}}" as="grp" hint-placeholder-count="7">
+<div style="margin-bottom:16px">
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#6a6870;margin-bottom:8px">{{grp.catLabel}}</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+<sc-for list="{{grp.items}}" as="b" hint-placeholder-count="6">
+<button onClick="{{b.select}}" title="{{b.desc}}" style="display:flex;flex-direction:column;gap:6px;border:1.5px solid {{b.borderColor}};border-radius:8px;padding:8px;background:#1f1f23;opacity:{{b.opacity}};cursor:pointer;text-align:left">
+<sc-if value="{{b.exists}}" hint-placeholder-val="{{false}}">
+<div style="height:40px;border-radius:5px;background:repeating-linear-gradient(45deg,#2c2c30 0 4px,#26262a 4px 8px);display:flex;align-items:center;justify-content:center;color:#6a6870;font-size:8px;font-family:ui-monospace,monospace">front render</div>
+</sc-if>
+<sc-if value="{{b.existsNot}}" hint-placeholder-val="{{true}}">
+<div style="height:40px;border-radius:5px;background:#232326;display:flex;align-items:center;justify-content:center;color:#8a8892;font-size:13px;font-weight:800">{{b.mono}}</div>
+</sc-if>
+<div style="font-size:10.5px;font-weight:600;color:#e8e6e3;line-height:1.25">{{b.name}}<sc-if value="{{b.required}}" hint-placeholder-val="{{false}}"><span style="color:#d9534f"> *</span></sc-if></div>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</sc-if>
+
+<sc-if value="{{isValidation}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{validationIssues}}" as="v" hint-placeholder-count="4">
+<div style="display:flex;gap:10px;background:#232326;border:1px solid #33333a;border-radius:8px;padding:12px">
+<div style="width:9px;height:9px;border-radius:5px;margin-top:3px;flex:none;background:{{v.dotColor}}"></div>
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#e8e6e3">{{v.label}}</div>
+<div style="font-size:11.5px;color:#8a8892;margin-top:2px">{{v.detail}}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+</div>
+</div>
+</div>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{null}}">
+<div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#232326;border:1px solid #3a3a40;color:#e8e6e3;padding:11px 18px;border-radius:9px;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:{{toastAnim}}">{{toast}}</div>
+</sc-if>
+
+<sc-if value="{{showSettingsModal}}" hint-placeholder-val="{{false}}">
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:55">
+<div style="width:400px;background:#1c1c1f;border:1px solid #33333a;border-radius:12px;padding:22px">
+<div style="font-size:14px;font-weight:700;margin-bottom:16px">Settings</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="border:1px solid #33333a;border-radius:7px;padding:11px 14px;background:#232326">
+<div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#c8c6cf;margin-bottom:8px">
+<span>Max Y layers</span>
+<span style="color:#e8e6e3;font-weight:700">{{maxY}}</span>
+</div>
+<input type="range" min="1" max="12" step="1" value="{{maxY}}" onChange="{{setMaxY}}" style="width:100%"></input>
+<div style="font-size:10.5px;color:#6a6870;margin-top:6px">Changing this resizes every level's grid — blocks above the new height are removed.</div>
+</div>
+<div style="border:1px solid #33333a;border-radius:7px;padding:11px 14px;background:#232326">
+<div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#c8c6cf;margin-bottom:8px">
+<span>Grid width (X)</span>
+<span style="color:#e8e6e3;font-weight:700">{{gridX}}</span>
+</div>
+<input type="range" min="2" max="16" step="1" value="{{gridX}}" onChange="{{setGridX}}" style="width:100%"></input>
+<div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#c8c6cf;margin:12px 0 8px">
+<span>Grid depth (Z)</span>
+<span style="color:#e8e6e3;font-weight:700">{{gridZ}}</span>
+</div>
+<input type="range" min="2" max="16" step="1" value="{{gridZ}}" onChange="{{setGridZ}}" style="width:100%"></input>
+<div style="font-size:10.5px;color:#6a6870;margin-top:6px">Footprint size, shared across all 5 levels. Defaults to 8×8. Resizing clears the current selection and clipboard.</div>
+</div>
+<button onClick="{{toggleShowTagMarkers}}" style="display:flex;align-items:center;justify-content:space-between;border:1px solid #33333a;border-radius:7px;padding:11px 14px;font-size:12.5px;cursor:pointer;background:#232326;color:#c8c6cf">
+<span>Show tag markers on grid</span>
+<span style="width:34px;height:18px;border-radius:9px;background:{{showTagMarkersColor}}"></span>
+</button>
+<button onClick="{{toggleShowMirrorPreview}}" style="display:flex;align-items:center;justify-content:space-between;border:1px solid #33333a;border-radius:7px;padding:11px 14px;font-size:12.5px;cursor:pointer;background:#232326;color:#c8c6cf">
+<span>Highlight mirrored cells on hover</span>
+<span style="width:34px;height:18px;border-radius:9px;background:{{showMirrorPreviewColor}}"></span>
+</button>
+<button onClick="{{toggleReduceMotion}}" style="display:flex;align-items:center;justify-content:space-between;border:1px solid #33333a;border-radius:7px;padding:11px 14px;font-size:12.5px;cursor:pointer;background:#232326;color:#c8c6cf">
+<span>Reduce motion (toasts, transitions)</span>
+<span style="width:34px;height:18px;border-radius:9px;background:{{reduceMotionColor}}"></span>
+</button>
+</div>
+<div style="display:flex;justify-content:flex-end;margin-top:18px">
+<button onClick="{{closeSettings}}" style="border:none;border-radius:7px;padding:9px 16px;background:#8a6fd6;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer">Done</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{showResourcePackModal}}" hint-placeholder-val="{{false}}">
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:50">
+<div style="width:380px;background:#1c1c1f;border:1px solid #33333a;border-radius:12px;padding:24px">
+<div style="font-size:14px;font-weight:700;margin-bottom:8px">Import Resource Pack</div>
+<div style="font-size:12.5px;color:#8a8892;margin-bottom:16px">Upload a Minecraft resource-pack .zip. PNG textures are matched by block name and rendered on swatches and the layer grid.</div>
+<sc-if value="{{rpProcessing}}" hint-placeholder-val="{{false}}">
+<div style="font-size:12.5px;color:#c8c6cf;padding:14px 0;text-align:center">Reading zip and matching textures…</div>
+</sc-if>
+<sc-if value="{{rpError}}" hint-placeholder-val="{{null}}">
+<div style="font-size:12px;color:#e0a84a;margin-bottom:12px">{{rpError}}</div>
+</sc-if>
+<label style="display:flex;align-items:center;justify-content:center;border:1.5px dashed #3a3a40;border-radius:8px;padding:22px;cursor:pointer;color:#8a8892;font-size:12.5px;margin-bottom:16px">
+Click to choose a .zip file
+<input type="file" accept=".zip" onChange="{{onResourcePackFile}}" style="display:none"></input>
+</label>
+<div style="display:flex;gap:8px;justify-content:flex-end">
+<button onClick="{{closeResourcePack}}" style="border:1px solid #33333a;border-radius:7px;padding:9px 14px;background:transparent;color:#c8c6cf;font-size:12.5px;cursor:pointer">Close</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+let GX=8,GZ=8,GY=6;
+const idx=(x,z,y)=>(x*GZ+z)*GY+y;
+const PALETTE=[
+ {id:'minecraft:stone',name:'Stone',mod:'minecraft',color:'#8a8a86'},
+ {id:'minecraft:cobblestone',name:'Cobblestone',mod:'minecraft',color:'#7a7a70'},
+ {id:'minecraft:stone_bricks',name:'Stone Bricks',mod:'minecraft',color:'#8f8f85'},
+ {id:'minecraft:oak_planks',name:'Oak Planks',mod:'minecraft',color:'#b8895a'},
+ {id:'minecraft:oak_log',name:'Oak Log',mod:'minecraft',color:'#6b4a2c'},
+ {id:'minecraft:dirt',name:'Dirt',mod:'minecraft',color:'#6d5238'},
+ {id:'minecraft:glass',name:'Glass',mod:'minecraft',color:'#bfe0df'},
+ {id:'minecraft:white_wool',name:'White Wool',mod:'minecraft',color:'#e6e2d8'},
+ {id:'minecraft:red_wool',name:'Red Wool',mod:'minecraft',color:'#a13d3d'},
+ {id:'minecraft:spruce_planks',name:'Spruce Planks',mod:'minecraft',color:'#6e4a30'},
+ {id:'minecraft:sand',name:'Sand',mod:'minecraft',color:'#d8ce9b'},
+ {id:'minecraft:gravel',name:'Gravel',mod:'minecraft',color:'#8f8a82'},
+ {id:'minecraft:bricks',name:'Bricks',mod:'minecraft',color:'#9c5a44'},
+ {id:'minecraft:oak_door',name:'Oak Door',mod:'minecraft',color:'#8a5a34'},
+ {id:'minecolonies:blockhutbuilder',name:"Builder's Hut",mod:'minecolonies',color:'#c98a3e'},
+ {id:'minecolonies:blockhutwarehouse',name:'Warehouse Hut',mod:'minecolonies',color:'#b97a30'},
+ {id:'minecolonies:blockhuttownhall',name:'Town Hall Hut',mod:'minecolonies',color:'#d9943f'},
+ {id:'minecolonies:blockhutfarmer',name:"Farmer's Hut",mod:'minecolonies',color:'#cf9550'},
+ {id:'minecolonies:blockrack',name:'Rack',mod:'minecolonies',color:'#a9743a'},
+ {id:'minecolonies:blockconstructiontape',name:'Construction Tape',mod:'minecolonies',color:'#d0b93c'},
+ {id:'minecolonies:blockdecorationplaceholder',name:'Decoration Placeholder',mod:'minecolonies',color:'#8a6a48'},
+ {id:'structurize:blockscaffolding',name:'Scaffolding',mod:'structurize',color:'#8f7bd9'},
+ {id:'structurize:shingle_slab',name:'Shingle Slab',mod:'structurize',color:'#7a6bc4'},
+ {id:'structurize:blockfluidsubstitution',name:'Fluid Substitution',mod:'structurize',color:'#9f8ee0'},
+ {id:'domum_ornamentum:blockbrick',name:'Brick Extra',mod:'domum_ornamentum',color:'#b3675a'},
+ {id:'domum_ornamentum:paneled_brick',name:'Paneled Brick',mod:'domum_ornamentum',color:'#a85f52'},
+ {id:'domum_ornamentum:blue_brick',name:'Blue Brick',mod:'domum_ornamentum',color:'#5c7a9c'},
+ {id:'domum_ornamentum:striped_brick',name:'Striped Brick',mod:'domum_ornamentum',color:'#c47a53'}
+];
+const TAGS=[
+ {id:'TAG_WORK',label:'Work',color:'#d9943f'},
+ {id:'TAG_CRAFTING',label:'Crafting',color:'#8f7bd9'},
+ {id:'TAG_SLEEPING',label:'Sleeping',color:'#5c9cd9'},
+ {id:'TAG_STORAGE',label:'Storage',color:'#a9743a'},
+ {id:'TAG_GUARD',label:'Guard',color:'#a13d3d'},
+ {id:'TAG_ITEM',label:'Item Spawn',color:'#6fae6f'}
+];
+const REGISTERED_MODS=['minecraft','minecolonies','structurize','domum_ornamentum'];
+const MODS=['all','minecraft','minecolonies','structurize','domum_ornamentum'];
+const HUT_TYPES=["Builder's Hut",'Residence','Guard Tower','Bakery',"Farmer's Hut",'Sawmill'];
+const REQUIRED_HUTS=['Town Hall',"Builder's Hut",'Residence','Warehouse',"Courier's Hut"];
+const PACK_BUILDINGS=[
+ {name:'Town Hall',category:'CORE',required:true,desc:'The founding building — placed first to claim colony land and manage citizens.'},
+ {name:"Builder's Hut",category:'CORE',required:true,desc:'Required for all construction. Builders live here and carry out every build order.'},
+ {name:'Residence',category:'CORE',required:true,desc:'Housing for citizens. Citizens cannot be added to the colony without beds.'},
+ {name:'Warehouse',category:'CORE',required:true,desc:'Central storage hub. All colony resources flow through here.'},
+ {name:"Courier's Hut",category:'CORE',required:true,desc:"Transports items between the Warehouse and all other huts. Required for logistics."},
+ {name:'Sawmill',category:'PRODUCTION & CRAFTING',required:false,desc:'Produces wooden planks, stairs, slabs, and other wood products.'},
+ {name:'Stonemason',category:'PRODUCTION & CRAFTING',required:false,desc:'Cuts and crafts stone, stone bricks, and related decorative stone blocks.'},
+ {name:'Blacksmith',category:'PRODUCTION & CRAFTING',required:false,desc:'Smelts and crafts iron and gold tools, armor, and equipment.'},
+ {name:'Smeltery',category:'PRODUCTION & CRAFTING',required:false,desc:'Smelts ores into ingots and processes metal resources.'},
+ {name:'Stone Smeltery',category:'PRODUCTION & CRAFTING',required:false,desc:'Produces smooth stone, glass, and other heat-processed stone goods.'},
+ {name:'Mechanic',category:'PRODUCTION & CRAFTING',required:false,desc:'Crafts complex mechanical and redstone components.'},
+ {name:'Fletcher',category:'PRODUCTION & CRAFTING',required:false,desc:'Crafts bows, arrows, crossbows, and fishing rods.'},
+ {name:'Dyer',category:'PRODUCTION & CRAFTING',required:false,desc:'Produces dye and dyed wool, terracotta, and glass.'},
+ {name:'Glassblower',category:'PRODUCTION & CRAFTING',required:false,desc:'Crafts glass panes, bottles, and glass-based items.'},
+ {name:'Concrete Mixer',category:'PRODUCTION & CRAFTING',required:false,desc:'Produces concrete powder and concrete blocks.'},
+ {name:'Crusher',category:'PRODUCTION & CRAFTING',required:false,desc:'Grinds blocks down into smaller components (gravel → sand, etc.).'},
+ {name:'Sifter',category:'PRODUCTION & CRAFTING',required:false,desc:'Sifts gravel, sand, dirt, and soul sand for drops (flint, clay, etc.).'},
+ {name:'Composter',category:'PRODUCTION & CRAFTING',required:false,desc:'Converts organic material into bone meal and compost.'},
+ {name:'Plantation',category:'PRODUCTION & CRAFTING',required:false,desc:'Grows specialty crops: sugar cane, cactus, bamboo, cocoa beans, etc.'},
+ {name:'Baker',category:'FOOD & HOSPITALITY',required:false,desc:'Bakes bread and other food items from wheat.'},
+ {name:'Cook (Restaurant)',category:'FOOD & HOSPITALITY',required:false,desc:'Feeds colonists. Cooks meals from raw ingredients stored in the Warehouse.'},
+ {name:'Farmer',category:'FOOD & HOSPITALITY',required:false,desc:'Grows wheat, potatoes, carrots, beets, and other farmland crops.'},
+ {name:'Fisherman',category:'FOOD & HOSPITALITY',required:false,desc:'Catches fish and aquatic drops.'},
+ {name:'Tavern',category:'FOOD & HOSPITALITY',required:false,desc:'Provides housing for up to 4 citizens and generates happiness in the colony.'},
+ {name:'Cowherder',category:'ANIMALS',required:false,desc:'Raises cows for beef and leather.'},
+ {name:'Swineherder',category:'ANIMALS',required:false,desc:'Raises pigs for pork and other drops.'},
+ {name:'Shepherd',category:'ANIMALS',required:false,desc:'Raises sheep for wool and mutton.'},
+ {name:'Chicken Coop',category:'ANIMALS',required:false,desc:'Raises chickens for eggs, feathers, and meat.'},
+ {name:'Rabbit Hutch',category:'ANIMALS',required:false,desc:"Raises rabbits for hides, meat, and rabbit's feet."},
+ {name:'Beekeeper',category:'ANIMALS',required:false,desc:'Manages beehives for honey, honeycomb, and beeswax.'},
+ {name:'Guard Tower',category:'MILITARY & DEFENCE',required:false,desc:'Houses a single guard who patrols a set route around the colony.'},
+ {name:'Barracks',category:'MILITARY & DEFENCE',required:false,desc:'A large military complex housing multiple guards and their equipment.'},
+ {name:'Barracks Tower',category:'MILITARY & DEFENCE',required:false,desc:'Attached to the Barracks; houses additional guards.'},
+ {name:'Archery',category:'MILITARY & DEFENCE',required:false,desc:'Trains archer guards to use bows and crossbows.'},
+ {name:'Combat Academy',category:'MILITARY & DEFENCE',required:false,desc:'Trains knight guards in melee combat.'},
+ {name:'Library',category:'EDUCATION & RESEARCH',required:false,desc:"Citizens study here to improve their intelligence skill over time."},
+ {name:'School',category:'EDUCATION & RESEARCH',required:false,desc:'Children attend school to learn skills before reaching working age.'},
+ {name:'University',category:'EDUCATION & RESEARCH',required:false,desc:'Researchers unlock colony upgrades and new technologies.'},
+ {name:'Miner',category:'UTILITY & SPECIAL',required:false,desc:'Digs tunnels and mines for ores, stone, and minerals.'},
+ {name:'Lumberjack (Forester)',category:'UTILITY & SPECIAL',required:false,desc:'Chops down trees and replants saplings automatically.'},
+ {name:'Enchanter',category:'UTILITY & SPECIAL',required:false,desc:'Enchants tools, armor, and books using accumulated XP from colonists.'},
+ {name:'Alchemist',category:'UTILITY & SPECIAL',required:false,desc:'Brews potions and produces alchemical supplies.'},
+ {name:'Hospital',category:'UTILITY & SPECIAL',required:false,desc:'Heals injured or sick colonists.'},
+ {name:'Graveyard',category:'UTILITY & SPECIAL',required:false,desc:'Stores the graves of colonists who have died. Can revive them over time.'},
+ {name:'Mystical Site',category:'UTILITY & SPECIAL',required:false,desc:'A decorative building that boosts happiness in the surrounding colony area.'},
+ {name:'Nether Worker',category:'UTILITY & SPECIAL',required:false,desc:'Travels to the Nether to gather Nether-specific resources.'}
+];
+const MODE_DEFS=[
+ {id:'select',label:'Select',mono:'SL',desc:'Click a block to highlight it and inspect its properties.'},
+ {id:'place',label:'Place',mono:'PL',desc:'Click to place the active block at the cursor position.'},
+ {id:'erase',label:'Erase',mono:'ER',desc:'Click to remove a block, replacing it with air.'},
+ {id:'paint',label:'Paint',mono:'PT',desc:'Hold and drag to continuously paint blocks across a stroke.'},
+ {id:'pick',label:'Pick',mono:'PK',desc:"Click any block in the scene to copy its type to the active slot (eyedropper)."},
+ {id:'tag',label:'Tag',mono:'TG',desc:'Click a block to assign MineColonies function tags to it.'},
+ {id:'wand',label:'Wand',mono:'WD',desc:'Click two corners to define a cuboid selection region.'}
+];
+const REGION_DEFS=[
+ {id:'fill',label:'Fill',mono:'FL',desc:'Flood the entire selected region with the active block.'},
+ {id:'replace',label:'Replace',mono:'RP',desc:'Swap all occurrences of one block type for another within the selection.'},
+ {id:'hollow',label:'Hollow',mono:'HL',desc:'Remove all interior blocks from a solid region, keeping only the shell.'},
+ {id:'walls',label:'Walls',mono:'WL',desc:'Fill only the four vertical faces of the selection (no floor or ceiling).'},
+ {id:'line',label:'Line',mono:'LN',desc:'Draw a straight line of blocks between two clicked points.'}
+];
+const CLIPBOARD_DEFS=[
+ {id:'copy',label:'Copy',mono:'CP',desc:'Copy the selected region to the clipboard.'},
+ {id:'paste',label:'Paste',mono:'PS',desc:'Place the clipboard contents at the current cursor position.'},
+ {id:'rotate',label:'Rotate',mono:'RT',desc:'Rotate the clipboard 90° clockwise around the Y axis.'},
+ {id:'flip',label:'Flip',mono:'FP',desc:'Mirror the clipboard across the X axis.'},
+ {id:'stack',label:'Stack',mono:'ST',desc:'Repeat the selected region once more in the +X direction.'}
+];
+const ALL_TOOL_DEFS=[...MODE_DEFS,...REGION_DEFS,...CLIPBOARD_DEFS];
+function readZipEntries(buf){
+  const view=new DataView(buf), bytes=new Uint8Array(buf);
+  let eocd=-1;
+  for(let i=bytes.length-22;i>=0;i--){ if(view.getUint32(i,true)===0x06054b50){ eocd=i; break; } }
+  if(eocd<0) throw new Error('not a valid zip');
+  const cdCount=view.getUint16(eocd+10,true), cdOffset=view.getUint32(eocd+16,true);
+  const entries=[]; let p=cdOffset;
+  for(let i=0;i<cdCount;i++){
+    if(view.getUint32(p,true)!==0x02014b50) break;
+    const method=view.getUint16(p+10,true), compSize=view.getUint32(p+20,true);
+    const nameLen=view.getUint16(p+28,true), extraLen=view.getUint16(p+30,true), commentLen=view.getUint16(p+32,true);
+    const localOffset=view.getUint32(p+42,true);
+    const name=new TextDecoder().decode(bytes.slice(p+46,p+46+nameLen));
+    entries.push({name,method,compSize,localOffset});
+    p+=46+nameLen+extraLen+commentLen;
+  }
+  return entries;
+}
+function extractEntryRaw(buf,entry){
+  const view=new DataView(buf), bytes=new Uint8Array(buf);
+  const lp=entry.localOffset;
+  const nameLen=view.getUint16(lp+26,true), extraLen=view.getUint16(lp+28,true);
+  const dataStart=lp+30+nameLen+extraLen;
+  return bytes.slice(dataStart,dataStart+entry.compSize);
+}
+async function inflateIfNeeded(data,method){
+  if(method===0) return data;
+  const ds=new DecompressionStream('deflate-raw');
+  const stream=new Blob([data]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+function shadeColor(hex,percent){
+ const f=parseInt(hex.slice(1),16), t=percent<0?0:255, p=Math.abs(percent)/100;
+ const R=f>>16,G=(f>>8)&0x00FF,B=f&0x0000FF;
+ const nr=Math.round((t-R)*p)+R, ng=Math.round((t-G)*p)+G, nb=Math.round((t-B)*p)+B;
+ return '#'+(0x1000000+nr*0x10000+ng*0x100+nb).toString(16).slice(1);
+}
+
+class Component extends DCLogic {
+ buildEmptyGrid(){ return new Array(GX*GZ*GY).fill(0); }
+ buildLevel1Grid(){
+   const g=new Array(GX*GZ*GY).fill(0);
+   const set=(x,z,y,val)=>{ if(x>=0&&x<GX&&z>=0&&z<GZ&&y>=0&&y<GY) g[idx(x,z,y)]=val; };
+   const p=(pid)=>PALETTE.findIndex(b=>b.id===pid)+1;
+   const stoneBricks=p('minecraft:stone_bricks'), oakPlanks=p('minecraft:oak_planks'), cobble=p('minecraft:cobblestone'),
+     glass=p('minecraft:glass'), door=p('minecraft:oak_door'), hutBuilder=p('minecolonies:blockhutbuilder'),
+     rack=p('minecolonies:blockrack'), scaffold=p('structurize:blockscaffolding'), brickExtra=p('domum_ornamentum:blockbrick');
+   for(let x=0;x<GX;x++)for(let z=0;z<GZ;z++){
+     const edge=x===0||x===GX-1||z===0||z===GZ-1;
+     set(x,z,0,edge?stoneBricks:oakPlanks);
+     if(edge){ set(x,z,1,cobble); set(x,z,2,cobble); }
+   }
+   set(3,0,1,door); set(3,0,2,0); set(4,0,1,0); set(4,0,2,0);
+   set(0,4,2,glass); set(GX-1,4,2,glass);
+   set(4,4,1,hutBuilder); set(1,1,1,brickExtra); set(6,1,1,rack); set(1,6,1,scaffold);
+   return g;
+ }
+ cellKey(x,y,z){ return x+'_'+y+'_'+z; }
+
+ setIsoContainer(el){
+   if(!el || this._isoObs) return;
+   this._isoObs=new ResizeObserver(entries=>{
+     const r=entries[0].contentRect;
+     const scale=Math.min(1,(r.width/360)*0.94,(r.height/290)*0.94);
+     this.setState({isoScale:scale>0?scale:1});
+   });
+   this._isoObs.observe(el);
+ }
+ setGridContainer(el){
+   if(!el || this._gridObs) return;
+   this._gridObs=new ResizeObserver(entries=>{
+     const r=entries[0].contentRect;
+     const contentSize = GX*30 + (GX-1)*2 + 16;
+     const scale=Math.min(1,(r.width/contentSize)*0.94,(r.height/contentSize)*0.94);
+     this.setState({gridScale:scale>0?scale:1});
+   });
+   this._gridObs.observe(el);
+ }
+ setIsoModalContainer(el){
+   if(!el){ this._isoModalObs=null; return; }
+   if(this._isoModalObs) this._isoModalObs.disconnect();
+   this._isoModalObs=new ResizeObserver(entries=>{
+     const r=entries[0].contentRect;
+     const scale=Math.min(2.2,(r.width/360)*0.94,(r.height/290)*0.94);
+     this.setState({isoScaleModal:scale>0?scale:1});
+   });
+   this._isoModalObs.observe(el);
+ }
+ componentWillUnmount(){ if(this._isoObs) this._isoObs.disconnect(); if(this._gridObs) this._gridObs.disconnect(); if(this._isoModalObs) this._isoModalObs.disconnect(); }
+ rotateCoord(x,z,rot){
+   switch(rot%4){
+     case 1: return {x:GZ-1-z, z:x};
+     case 2: return {x:GX-1-x, z:GZ-1-z};
+     case 3: return {x:z, z:GX-1-x};
+     default: return {x,z};
+   }
+ }
+
+ state={
+   currentLevel:1, activeLayer:2, tool:'place',
+   selectedBlockId: PALETTE.findIndex(b=>b.id==='minecraft:stone')+1,
+   symmetryX:false, symmetryZ:false,
+   ghostEnabled:true, ghostLevel:null, selection:null, selecting:false,
+   hoverCell:null, search:'', modFilter:'all', railTab:'palette',
+   resourcePackLoaded:false, showResourcePackModal:false, rpProcessing:false, rpError:null, rpMatchedCount:0, textureMap:{},
+   taggedCellKey:null, toast:null, newModInput:'', isoScale:1, gridScale:1, isoScaleModal:1, isoRotation:0, showIsoModal:false,
+   showSettingsModal:false, settingShowTagMarkers:true, settingShowMirrorPreview:true, settingReduceMotion:false,
+   inspectedCellKey:null, clipboard:null, hoveredTool:null, maxY:GY, gridX:GX, gridZ:GZ, highlightBlockId:null,
+   existingHutTypes:["Builder's Hut"],
+   metadata:{ name:"Builder's Hut", hutType:"Builder's Hut", fileName:'buildershut1.blueprint', packName:'kdesign', mcVersion:'1.20.1', offset:{x:4,y:1,z:0}, requiredMods:['minecolonies','structurize'] },
+   levels:{
+     1:{grid:this.buildLevel1Grid(), tags:{[this.cellKey(4,1,4)]:'TAG_WORK'}},
+     2:{grid:this.buildEmptyGrid(), tags:{}},
+     3:{grid:this.buildEmptyGrid(), tags:{}},
+     4:{grid:this.buildEmptyGrid(), tags:{}},
+     5:{grid:this.buildEmptyGrid(), tags:{}}
+   },
+   history:{1:{undo:[],redo:[]},2:{undo:[],redo:[]},3:{undo:[],redo:[]},4:{undo:[],redo:[]},5:{undo:[],redo:[]}}
+ };
+
+ pushHistory(level){
+   const lv=this.state.levels[level];
+   const snap={grid:lv.grid.slice(),tags:{...lv.tags}};
+   const h=this.state.history[level];
+   h.undo.push(snap); if(h.undo.length>60) h.undo.shift();
+   h.redo=[];
+ }
+ undo(){
+   const lvl=this.state.currentLevel, h=this.state.history[lvl];
+   if(!h.undo.length) return;
+   const cur=this.state.levels[lvl];
+   h.redo.push({grid:cur.grid.slice(),tags:{...cur.tags}});
+   this.state.levels[lvl]=h.undo.pop();
+   this.setState({});
+ }
+ redo(){
+   const lvl=this.state.currentLevel, h=this.state.history[lvl];
+   if(!h.redo.length) return;
+   const cur=this.state.levels[lvl];
+   h.undo.push({grid:cur.grid.slice(),tags:{...cur.tags}});
+   this.state.levels[lvl]=h.redo.pop();
+   this.setState({});
+ }
+ mirrorTargets(x,z){
+   const {symmetryX,symmetryZ}=this.state;
+   const mx=GX-1-x, mz=GZ-1-z;
+   const set=new Map(); set.set(x+','+z,{x,z});
+   if(symmetryX) set.set(mx+','+z,{x:mx,z});
+   if(symmetryZ) set.set(x+','+mz,{x,z:mz});
+   if(symmetryX&&symmetryZ) set.set(mx+','+mz,{x:mx,z:mz});
+   return Array.from(set.values());
+ }
+ applyTool(x,z,startStroke){
+   const {tool,currentLevel,activeLayer,selectedBlockId}=this.state;
+   const lvl=this.state.levels[currentLevel];
+   if(tool==='place'||tool==='paint'||tool==='erase'){
+     if(startStroke) this.pushHistory(currentLevel);
+     const val=tool==='erase'?0:selectedBlockId;
+     this.mirrorTargets(x,z).forEach(({x:tx,z:tz})=>{ lvl.grid[idx(tx,tz,activeLayer)]=val; });
+     this.setState({});
+   } else if(tool==='pick'){
+     const val=lvl.grid[idx(x,z,activeLayer)];
+     if(val!==0) this.setState({selectedBlockId:val, tool:'place'});
+   } else if(tool==='tag'){
+     const val=lvl.grid[idx(x,z,activeLayer)];
+     if(val===0){ this.showToast('Select a non-air block to tag'); return; }
+     this.setState({taggedCellKey:this.cellKey(x,activeLayer,z)});
+   } else if(tool==='select'){
+     const val=lvl.grid[idx(x,z,activeLayer)];
+     if(val===0){ this.showToast('Cell is empty — nothing to inspect'); return; }
+     this.setState({inspectedCellKey:this.cellKey(x,activeLayer,z)});
+   }
+ }
+ onCellMouseDown(x,z){
+   const {tool}=this.state;
+   if(tool==='wand'){ this.setState({selecting:true,selection:{x1:x,z1:z,x2:x,z2:z}}); return; }
+   if(tool==='paint'){ this._painting=true; this.applyTool(x,z,true); return; }
+   this.applyTool(x,z,true);
+ }
+ onCellMouseEnter(x,z){
+   this.setState({hoverCell:{x,z}});
+   if(this.state.tool==='paint' && this._painting) this.applyTool(x,z,false);
+   if(this.state.tool==='wand' && this.state.selecting) this.setState(s=>({selection:{...s.selection,x2:x,z2:z}}));
+ }
+ onGridMouseUp(){ this._painting=false; if(this.state.selecting) this.setState({selecting:false}); }
+ onGridMouseLeave(){ this.setState({hoverCell:null}); }
+ fillSelection(fillVal){
+   const sel=this.state.selection; if(!sel) return;
+   const {currentLevel,activeLayer,selectedBlockId}=this.state;
+   this.pushHistory(currentLevel);
+   const lvl=this.state.levels[currentLevel];
+   const x1=Math.min(sel.x1,sel.x2),x2=Math.max(sel.x1,sel.x2),z1=Math.min(sel.z1,sel.z2),z2=Math.max(sel.z1,sel.z2);
+   for(let x=x1;x<=x2;x++)for(let z=z1;z<=z2;z++){
+     this.mirrorTargets(x,z).forEach(({x:tx,z:tz})=>{ lvl.grid[idx(tx,tz,activeLayer)]=fillVal?selectedBlockId:0; });
+   }
+   this.setState({});
+ }
+ deselectSelection(){ this.setState({selection:null,selecting:false}); }
+ getSelRect(){
+   const sel=this.state.selection; if(!sel) return null;
+   return {x1:Math.min(sel.x1,sel.x2),x2:Math.max(sel.x1,sel.x2),z1:Math.min(sel.z1,sel.z2),z2:Math.max(sel.z1,sel.z2)};
+ }
+ doFill(){
+   if(!this.state.selection){ this.showToast('Make a selection with Wand first'); return; }
+   this.fillSelection(true);
+ }
+ doReplace(){
+   const rect=this.getSelRect(); if(!rect){ this.showToast('Make a selection with Wand first'); return; }
+   const {currentLevel,activeLayer,selectedBlockId}=this.state;
+   const lvl=this.state.levels[currentLevel];
+   const fromVal=lvl.grid[idx(rect.x1,rect.z1,activeLayer)];
+   if(fromVal===0){ this.showToast('First selection corner is air — pick a filled corner'); return; }
+   this.pushHistory(currentLevel);
+   for(let x=rect.x1;x<=rect.x2;x++)for(let z=rect.z1;z<=rect.z2;z++){
+     this.mirrorTargets(x,z).forEach(({x:tx,z:tz})=>{
+       if(lvl.grid[idx(tx,tz,activeLayer)]===fromVal) lvl.grid[idx(tx,tz,activeLayer)]=selectedBlockId;
+     });
+   }
+   this.setState({});
+ }
+ doHollow(){
+   const rect=this.getSelRect(); if(!rect){ this.showToast('Make a selection with Wand first'); return; }
+   const {currentLevel,activeLayer}=this.state; const lvl=this.state.levels[currentLevel];
+   this.pushHistory(currentLevel);
+   for(let x=rect.x1+1;x<rect.x2;x++)for(let z=rect.z1+1;z<rect.z2;z++){ lvl.grid[idx(x,z,activeLayer)]=0; }
+   this.setState({});
+ }
+ doWalls(){
+   const rect=this.getSelRect(); if(!rect){ this.showToast('Make a selection with Wand first'); return; }
+   const {currentLevel,activeLayer,selectedBlockId}=this.state; const lvl=this.state.levels[currentLevel];
+   this.pushHistory(currentLevel);
+   for(let x=rect.x1;x<=rect.x2;x++)for(let z=rect.z1;z<=rect.z2;z++){
+     if(x===rect.x1||x===rect.x2||z===rect.z1||z===rect.z2) lvl.grid[idx(x,z,activeLayer)]=selectedBlockId;
+   }
+   this.setState({});
+ }
+ doLine(){
+   const sel=this.state.selection; if(!sel){ this.showToast('Click two corners with Wand first'); return; }
+   const {currentLevel,activeLayer,selectedBlockId}=this.state; const lvl=this.state.levels[currentLevel];
+   this.pushHistory(currentLevel);
+   let x0=sel.x1,z0=sel.z1,x1=sel.x2,z1=sel.z2;
+   const dx=Math.abs(x1-x0),dz=Math.abs(z1-z0),sx=x0<x1?1:-1,sz=z0<z1?1:-1; let err=dx-dz;
+   while(true){
+     lvl.grid[idx(x0,z0,activeLayer)]=selectedBlockId;
+     if(x0===x1&&z0===z1) break;
+     const e2=2*err;
+     if(e2>-dz){ err-=dz; x0+=sx; }
+     if(e2<dx){ err+=dx; z0+=sz; }
+   }
+   this.setState({});
+ }
+ doCopy(){
+   const rect=this.getSelRect(); if(!rect){ this.showToast('Make a selection with Wand first'); return; }
+   const {currentLevel,activeLayer}=this.state; const lvl=this.state.levels[currentLevel];
+   const cells=[];
+   for(let x=rect.x1;x<=rect.x2;x++)for(let z=rect.z1;z<=rect.z2;z++){
+     cells.push({dx:x-rect.x1,dz:z-rect.z1,val:lvl.grid[idx(x,z,activeLayer)]});
+   }
+   const w=rect.x2-rect.x1+1,d=rect.z2-rect.z1+1;
+   this.setState({clipboard:{w,d,cells}});
+   this.showToast('Copied '+w+'×'+d+' region to clipboard');
+ }
+ doPaste(){
+   const {clipboard,hoverCell,currentLevel,activeLayer}=this.state;
+   if(!clipboard){ this.showToast('Copy a region first'); return; }
+   if(!hoverCell){ this.showToast('Hover the grid to choose a paste point'); return; }
+   const lvl=this.state.levels[currentLevel];
+   this.pushHistory(currentLevel);
+   clipboard.cells.forEach(c=>{
+     const tx=hoverCell.x+c.dx, tz=hoverCell.z+c.dz;
+     if(tx>=0&&tx<GX&&tz>=0&&tz<GZ) lvl.grid[idx(tx,tz,activeLayer)]=c.val;
+   });
+   this.setState({});
+ }
+ doRotate(){
+   const c=this.state.clipboard; if(!c){ this.showToast('Copy a region first'); return; }
+   const cells=c.cells.map(cell=>({dx:c.d-1-cell.dz, dz:cell.dx, val:cell.val}));
+   this.setState({clipboard:{w:c.d,d:c.w,cells}});
+ }
+ doFlip(){
+   const c=this.state.clipboard; if(!c){ this.showToast('Copy a region first'); return; }
+   const cells=c.cells.map(cell=>({dx:c.w-1-cell.dx, dz:cell.dz, val:cell.val}));
+   this.setState({clipboard:{...c,cells}});
+ }
+ doStack(){
+   const rect=this.getSelRect(); if(!rect){ this.showToast('Make a selection with Wand first'); return; }
+   const {currentLevel,activeLayer}=this.state; const lvl=this.state.levels[currentLevel];
+   const w=rect.x2-rect.x1+1;
+   this.pushHistory(currentLevel);
+   for(let x=rect.x1;x<=rect.x2;x++)for(let z=rect.z1;z<=rect.z2;z++){
+     const val=lvl.grid[idx(x,z,activeLayer)]; const tx=x+w;
+     if(tx<GX) lvl.grid[idx(tx,z,activeLayer)]=val;
+   }
+   this.setState({});
+ }
+ assignTag(tagId){
+   const {currentLevel,taggedCellKey}=this.state; if(!taggedCellKey) return;
+   this.pushHistory(currentLevel);
+   this.state.levels[currentLevel].tags[taggedCellKey]=tagId;
+   this.setState({});
+ }
+ clearTag(){
+   const {currentLevel,taggedCellKey}=this.state; if(!taggedCellKey) return;
+   this.pushHistory(currentLevel);
+   delete this.state.levels[currentLevel].tags[taggedCellKey];
+   this.setState({});
+ }
+ showToast(msg){ this.setState({toast:msg}); clearTimeout(this._toastT); this._toastT=setTimeout(()=>this.setState({toast:null}),2600); }
+ exportBlueprint(){ this.showToast('Exported '+this.state.metadata.fileName+' (Level '+this.state.currentLevel+')'); }
+
+ openResourcePack(){ this.setState({showResourcePackModal:true,rpError:null}); }
+ closeResourcePack(){ this.setState({showResourcePackModal:false}); }
+ async onResourcePackFile(e){
+   const file=e.target.files && e.target.files[0];
+   if(!file) return;
+   this.setState({rpProcessing:true,rpError:null});
+   try{
+     const buf=await file.arrayBuffer();
+     const entries=readZipEntries(buf).filter(en=>/\.png$/i.test(en.name) && /textures?/i.test(en.name));
+     const map={};
+     for(const b of PALETTE){
+       const local=b.id.split(':')[1].toLowerCase();
+       const match=entries.find(en=>en.name.split('/').pop().replace(/\.png$/i,'').toLowerCase()===local);
+       if(match){
+         const raw=extractEntryRaw(buf,match);
+         const data=await inflateIfNeeded(raw,match.method);
+         map[b.id]=URL.createObjectURL(new Blob([data],{type:'image/png'}));
+       }
+     }
+     const matchedCount=Object.keys(map).length;
+     this.setState({textureMap:map, resourcePackLoaded:true, rpMatchedCount:matchedCount, rpProcessing:false, showResourcePackModal:false});
+     this.showToast('Resource pack loaded — '+matchedCount+' of '+PALETTE.length+' block textures matched');
+   }catch(err){
+     this.setState({rpProcessing:false, rpError:'Could not read this file as a resource pack zip.'});
+   }
+ }
+ usedMods(level){
+   const lvl=this.state.levels[level]; const set=new Set();
+   lvl.grid.forEach(v=>{ if(v!==0) set.add(PALETTE[v-1].mod); });
+   return Array.from(set);
+ }
+ addMissingModsToRequired(){
+   const used=this.usedMods(this.state.currentLevel);
+   const req=new Set(this.state.metadata.requiredMods);
+   used.forEach(m=>{ if(m!=='minecraft') req.add(m); });
+   this.setState(s=>({metadata:{...s.metadata,requiredMods:Array.from(req)}}));
+ }
+ footprintOf(level){
+   const lvl=this.state.levels[level]; const set=new Set();
+   for(let x=0;x<GX;x++)for(let z=0;z<GZ;z++){
+     let has=false;
+     for(let y=0;y<GY;y++){ if(lvl.grid[idx(x,z,y)]!==0){has=true;break;} }
+     if(has) set.add(x+','+z);
+   }
+   return set;
+ }
+ updateMeta(field,value){ this.setState(s=>({metadata:{...s.metadata,[field]:value}})); }
+ slugHutType(hutType){ return (hutType||'blueprint').toLowerCase().replace(/[^a-z0-9]+/g,''); }
+ computeFileName(hutType,level){ return this.slugHutType(hutType)+level+'.blueprint'; }
+ setHutType(hutType){
+   this.setState(s=>({metadata:{...s.metadata, hutType, fileName:this.computeFileName(hutType,s.currentLevel)}}));
+ }
+ updateOffset(axis,value){ this.setState(s=>({metadata:{...s.metadata,offset:{...s.metadata.offset,[axis]:Number(value)||0}}})); }
+ setMaxY(newVal){
+   newVal=Math.max(1,Math.min(12,Math.round(Number(newVal))));
+   const oldVal=GY;
+   if(newVal===oldVal) return;
+   Object.values(this.state.levels).forEach(lvl=>{
+     const newGrid=new Array(GX*GZ*newVal).fill(0);
+     const minY=Math.min(oldVal,newVal);
+     for(let x=0;x<GX;x++)for(let z=0;z<GZ;z++)for(let y=0;y<minY;y++){
+       newGrid[(x*GZ+z)*newVal+y]=lvl.grid[(x*GZ+z)*oldVal+y];
+     }
+     lvl.grid=newGrid;
+     Object.keys(lvl.tags).forEach(k=>{ const y=Number(k.split('_')[1]); if(y>=newVal) delete lvl.tags[k]; });
+   });
+   GY=newVal;
+   this.setState(s=>({maxY:newVal, activeLayer:Math.min(s.activeLayer,newVal-1), clipboard:null}));
+   this.showToast('Max Y layers set to '+newVal+' — grids resized');
+ }
+ setGridSize(newX,newZ){
+   newX=Math.max(2,Math.min(16,Math.round(Number(newX))));
+   newZ=Math.max(2,Math.min(16,Math.round(Number(newZ))));
+   const oldX=GX,oldZ=GZ;
+   if(newX===oldX && newZ===oldZ) return;
+   Object.values(this.state.levels).forEach(lvl=>{
+     const newGrid=new Array(newX*newZ*GY).fill(0);
+     const minX=Math.min(oldX,newX),minZ=Math.min(oldZ,newZ);
+     for(let x=0;x<minX;x++)for(let z=0;z<minZ;z++)for(let y=0;y<GY;y++){
+       newGrid[(x*newZ+z)*GY+y]=lvl.grid[(x*oldZ+z)*GY+y];
+     }
+     lvl.grid=newGrid;
+     Object.keys(lvl.tags).forEach(k=>{
+       const [tx,,tz]=k.split('_').map(Number);
+       if(tx>=newX||tz>=newZ) delete lvl.tags[k];
+     });
+   });
+   GX=newX; GZ=newZ;
+   this.setState({gridX:newX, gridZ:newZ, selection:null, selecting:false, hoverCell:null, clipboard:null, inspectedCellKey:null, taggedCellKey:null});
+   this.showToast('Grid resized to '+newX+'×'+newZ);
+ }
+ openBuilding(name){
+   this.setState(s=>({
+     metadata:{...s.metadata, hutType:name, fileName:this.computeFileName(name,s.currentLevel)},
+     existingHutTypes: s.existingHutTypes.includes(name) ? s.existingHutTypes : [...s.existingHutTypes,name]
+   }));
+   this.showToast('Now editing '+name);
+ }
+ jumpToBlock(blockIdx){
+   const lvl=this.state.levels[this.state.currentLevel];
+   for(let y=0;y<GY;y++)for(let x=0;x<GX;x++)for(let z=0;z<GZ;z++){
+     if(lvl.grid[idx(x,z,y)]===blockIdx){
+       this.setState({activeLayer:y, highlightBlockId:blockIdx});
+       return;
+     }
+   }
+   this.showToast('No instances found on this level');
+ }
+ addNewMod(){
+   const v=(this.state.newModInput||'').trim(); if(!v) return;
+   this.setState(s=>({metadata:{...s.metadata,requiredMods:Array.from(new Set([...s.metadata.requiredMods,v]))},newModInput:''}));
+ }
+
+ renderVals(){
+   const s=this.state;
+   const lvl=s.levels[s.currentLevel];
+   const ghostLevelNum = s.ghostEnabled ? (s.ghostLevel || Math.max(1,s.currentLevel-1)) : null;
+   const ghostLvl = (ghostLevelNum && ghostLevelNum!==s.currentLevel && s.currentLevel>1) ? s.levels[ghostLevelNum] : null;
+
+   const S=22,H=18,originX=176,originY=90;
+   const cubesRaw=[];
+   const cellAt=(gr,x,z,y)=> (x>=0&&x<GX&&z>=0&&z<GZ&&y>=0&&y<GY) ? gr[idx(x,z,y)] : 0;
+   for(let x=0;x<GX;x++)for(let z=0;z<GZ;z++)for(let y=0;y<=s.activeLayer;y++){
+     const val=lvl.grid[idx(x,z,y)];
+     const r=this.rotateCoord(x,z,s.isoRotation);
+     if(val!==0){
+       const color=PALETTE[val-1].color;
+       const showTop = !(y+1<=s.activeLayer && cellAt(lvl.grid,x,z,y+1)!==0);
+       const showWest = cellAt(lvl.grid,x-1,z,y)===0;
+       const showEast = cellAt(lvl.grid,x,z-1,y)===0;
+       cubesRaw.push({depth:(r.x+r.z)*10+y,gx:r.x,gz:r.z,gy:y,
+         topColor: showTop?color:'transparent', westColor: showWest?shadeColor(color,-38):'transparent', eastColor: showEast?shadeColor(color,-18):'transparent',
+         ghost:false});
+     } else if(ghostLvl){
+       const gval=ghostLvl.grid[idx(x,z,y)];
+       if(gval!==0){
+         const color=PALETTE[gval-1].color;
+         const showTop = !(y+1<=s.activeLayer && cellAt(ghostLvl.grid,x,z,y+1)!==0);
+         const showWest = cellAt(ghostLvl.grid,x-1,z,y)===0;
+         const showEast = cellAt(ghostLvl.grid,x,z-1,y)===0;
+         cubesRaw.push({depth:(r.x+r.z)*10+y-0.5,gx:r.x,gz:r.z,gy:y,
+           topColor: showTop?color:'transparent', westColor: showWest?shadeColor(color,-38):'transparent', eastColor: showEast?shadeColor(color,-18):'transparent',
+           ghost:true});
+       }
+     }
+   }
+   cubesRaw.sort((a,b)=>a.depth-b.depth);
+   const isoCubes=cubesRaw.map((c,i)=>{
+     const sx=originX+(c.gx-c.gz)*S;
+     const topY=originY+(c.gx+c.gz)*(S/2)-c.gy*H;
+     return {
+       key:i+'_'+c.gx+'_'+c.gy+'_'+c.gz,
+       left:sx-S-1, top:topY-1, eastLeft:sx-1,
+       topColor:c.topColor, eastColor:c.eastColor, westColor:c.westColor,
+       opacity:c.ghost?0.3:1
+     };
+   });
+   let hoverCubeStyle=null;
+   if(s.hoverCell && ['place','erase','paint'].includes(s.tool)){
+     const {x:hx,z:hz}=s.hoverCell;
+     const sx=originX+(hx-hz)*S, topY=originY+(hx+hz)*(S/2)-s.activeLayer*H;
+     hoverCubeStyle={left:sx-S, top:topY};
+   }
+
+   const gridCells=[];
+   for(let z=0;z<GZ;z++)for(let x=0;x<GX;x++){
+     const val=lvl.grid[idx(x,z,s.activeLayer)];
+     const block=val!==0?PALETTE[val-1]:null;
+     const tagKey=this.cellKey(x,s.activeLayer,z);
+     const tag=lvl.tags[tagKey];
+     const tagDef=tag?TAGS.find(t=>t.id===tag):null;
+     let isHoverTarget=false;
+     if(s.hoverCell && ['place','erase','paint'].includes(s.tool)){
+       isHoverTarget = s.settingShowMirrorPreview
+         ? this.mirrorTargets(s.hoverCell.x,s.hoverCell.z).some(m=>m.x===x&&m.z===z)
+         : (s.hoverCell.x===x && s.hoverCell.z===z);
+     }
+     let inSelection=false;
+     if(s.selection){
+       const x1=Math.min(s.selection.x1,s.selection.x2),x2=Math.max(s.selection.x1,s.selection.x2);
+       const z1=Math.min(s.selection.z1,s.selection.z2),z2=Math.max(s.selection.z1,s.selection.z2);
+       inSelection=x>=x1&&x<=x2&&z>=z1&&z<=z2;
+     }
+     const isHighlighted = s.highlightBlockId!=null && val===s.highlightBlockId;
+     gridCells.push({
+       key:x+'_'+z, bg: block?block.color:'#38383f',
+       bgImage: block ? (s.textureMap[block.id] ? ('url('+s.textureMap[block.id]+')') : 'repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 3px,transparent 3px 6px)') : 'none',
+       border: isHighlighted?'#ffffff':((isHoverTarget||inSelection)?'#8a6fd6':'#4a4a53'),
+       borderWidthThin: isHighlighted?'2.5px':((isHoverTarget||inSelection)?'1.5px':'0.5px'),
+       highlightGlow: isHighlighted?'0 0 0 3px rgba(138,111,214,.55)':'none',
+       tagColor: (tagDef&&s.settingShowTagMarkers)?tagDef.color:null, tagLetter: tagDef?tagDef.label[0]:null,
+       onDown:()=>this.onCellMouseDown(x,z), onEnter:()=>this.onCellMouseEnter(x,z)
+     });
+   }
+
+   const q=s.search.trim().toLowerCase();
+   const paletteList=PALETTE.map((b,i)=>({...b,idx:i+1})).filter(b=>{
+     if(s.modFilter!=='all' && b.mod!==s.modFilter) return false;
+     if(q && !b.name.toLowerCase().includes(q) && !b.id.toLowerCase().includes(q)) return false;
+     return true;
+   }).map(b=>({...b, borderColor: b.idx===s.selectedBlockId?'#8a6fd6':'#2c2c30', select:()=>this.setState({selectedBlockId:b.idx}),
+     bgImage: s.textureMap[b.id] ? ('url('+s.textureMap[b.id]+')') : 'repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 3px,transparent 3px 6px)'}));
+
+   const levelTabs=[1,2,3,4,5].map(n=>({
+     n,label:'L'+n,
+     bg:n===s.currentLevel?'#8a6fd6':'transparent', fg:n===s.currentLevel?'#fff':'#9a98a3',
+     select:()=>this.setState(st=>({currentLevel:n,selection:null,selecting:false,taggedCellKey:null,metadata:{...st.metadata,fileName:this.computeFileName(st.metadata.hutType,n)}}))
+   }));
+   const hasSelection=!!s.selection;
+   const hasClipboard=!!s.clipboard;
+   const modeTools=MODE_DEFS.map(t=>({
+     ...t, bg:t.id===s.tool?'#8a6fd6':'#232326', fg:t.id===s.tool?'#fff':'#c8c6cf',
+     select:()=>this.setState({tool:t.id}), hoverOn:()=>this.setState({hoveredTool:t.id})
+   }));
+   const regionActions=REGION_DEFS.map(a=>({
+     ...a, bg:'#232326', fg:'#c8c6cf', opacity:hasSelection?1:0.4, disabled:!hasSelection,
+     run: a.id==='fill'?()=>this.doFill(): a.id==='replace'?()=>this.doReplace(): a.id==='hollow'?()=>this.doHollow(): a.id==='walls'?()=>this.doWalls(): ()=>this.doLine(),
+     hoverOn:()=>this.setState({hoveredTool:a.id})
+   }));
+   const clipboardActions=CLIPBOARD_DEFS.map(a=>({
+     ...a, bg:'#232326', fg:'#c8c6cf',
+     opacity: (a.id==='copy'||a.id==='stack') ? (hasSelection?1:0.4) : (hasClipboard?1:0.4),
+     disabled: (a.id==='copy'||a.id==='stack') ? !hasSelection : !hasClipboard,
+     run: a.id==='copy'?()=>this.doCopy(): a.id==='paste'?()=>this.doPaste(): a.id==='rotate'?()=>this.doRotate(): a.id==='flip'?()=>this.doFlip(): ()=>this.doStack(),
+     hoverOn:()=>this.setState({hoveredTool:a.id})
+   }));
+   const tooltipDef = s.hoveredTool ? ALL_TOOL_DEFS.find(t=>t.id===s.hoveredTool) : ALL_TOOL_DEFS.find(t=>t.id===s.tool);
+   const tooltipInfo = tooltipDef ? {label:tooltipDef.label, desc:tooltipDef.desc} : null;
+   let selRectForLabel=this.getSelRect();
+   const selectionSizeLabel = selRectForLabel ? ((selRectForLabel.x2-selRectForLabel.x1+1)+'×'+(selRectForLabel.z2-selRectForLabel.z1+1)) : '';
+   let inspectedInfo=null;
+   if(s.inspectedCellKey){
+     const [ix,iy,iz]=s.inspectedCellKey.split('_').map(Number);
+     const ival=lvl.grid[idx(ix,iz,iy)];
+     if(ival!==0){ const b=PALETTE[ival-1]; inspectedInfo={x:ix,y:iy,z:iz,name:b.name,id:b.id,mod:b.mod}; }
+   }
+   const modChips=MODS.map(m=>({
+     id:m, label:m==='all'?'All':m, bg:m===s.modFilter?'#8a6fd6':'#232326', fg:m===s.modFilter?'#fff':'#9a98a3',
+     select:()=>this.setState({modFilter:m})
+   }));
+
+   const footprintCur=this.footprintOf(s.currentLevel);
+   let footprintIssue, footprintMismatchCount=0;
+   if(s.currentLevel>1){
+     const footprintPrev=this.footprintOf(s.currentLevel-1);
+     const diff=new Set([...footprintCur].filter(c=>!footprintPrev.has(c)).concat([...footprintPrev].filter(c=>!footprintCur.has(c))));
+     footprintMismatchCount=diff.size;
+     footprintIssue = diff.size===0
+       ? {id:'footprint',label:'Footprint match',dotColor:'#5fbf6f',detail:'Matches Level '+(s.currentLevel-1)+' footprint.'}
+       : {id:'footprint',label:'Footprint match',dotColor:'#e0a84a',detail:diff.size+' cell(s) differ from Level '+(s.currentLevel-1)+'.'};
+   } else {
+     footprintIssue={id:'footprint',label:'Footprint match',dotColor:'#5fbf6f',detail:'No previous level to compare.'};
+   }
+   const used=this.usedMods(s.currentLevel);
+   const unknown=used.filter(m=>!REGISTERED_MODS.includes(m));
+   const unknownIssue = unknown.length
+     ? {id:'unknown',label:'Unknown namespaces',dotColor:'#d9534f',detail:unknown.join(', ')+' not registered.'}
+     : {id:'unknown',label:'Unknown namespaces',dotColor:'#5fbf6f',detail:'All block namespaces recognized.'};
+   const off=s.metadata.offset;
+   const anchorOk=off.x>=0&&off.x<GX&&off.z>=0&&off.z<GZ&&off.y>=0&&off.y<s.maxY;
+   const anchorIssue={id:'anchor',label:'Anchor in bounds',dotColor:anchorOk?'#5fbf6f':'#d9534f',detail:anchorOk?('Offset ('+off.x+', '+off.y+', '+off.z+') is within bounds.'):'Offset is outside the voxel grid.'};
+   const isEmpty=lvl.grid.every(v=>v===0);
+   const emptyIssue={id:'empty',label:'Not empty',dotColor:isEmpty?'#d9534f':'#5fbf6f',detail:isEmpty?'This level has no blocks placed yet.':'Level contains blocks.'};
+   const validationIssues=[footprintIssue,unknownIssue,anchorIssue,emptyIssue];
+   const sevOf=(c)=>c==='#d9534f'?2:(c==='#e0a84a'?1:0);
+   const worstIssue = validationIssues.reduce((best,cur)=> sevOf(cur.dotColor)>sevOf(best.dotColor)?cur:best, validationIssues[0]);
+   const blockCount = lvl.grid.filter(v=>v!==0).length;
+
+   const counts={};
+   lvl.grid.forEach(v=>{ if(v!==0) counts[v]=(counts[v]||0)+1; });
+   const byMod={};
+   Object.keys(counts).forEach(k=>{
+     const bIdx=Number(k); const b=PALETTE[bIdx-1];
+     if(!byMod[b.mod]) byMod[b.mod]=[];
+     byMod[b.mod].push({name:b.name,color:b.color,count:counts[k],blockIdx:bIdx,jump:()=>this.jumpToBlock(bIdx),
+       rowBg: s.highlightBlockId===bIdx?'#2c2440':'transparent'});
+   });
+   const MOD_LABELS={minecraft:'Minecraft',minecolonies:'MineColonies',structurize:'Structurize',domum_ornamentum:'Domum Ornamentum'};
+   const MOD_COLORS_UI={minecraft:'#9a98a3',minecolonies:'#d9943f',structurize:'#8f7bd9',domum_ornamentum:'#c47a53'};
+   const blockListGroups=Object.keys(byMod).map(m=>({
+     modLabel:MOD_LABELS[m]||m, modColor:MOD_COLORS_UI[m]||'#9a98a3',
+     items: byMod[m].sort((a,b)=>b.count-a.count)
+   }));
+
+   const missing=used.filter(m=>m!=='minecraft' && !s.metadata.requiredMods.includes(m));
+   const showMissingModsBanner=missing.length>0;
+   const missingModsText=missing.length?('Blocks from '+missing.join(', ')+' are used but not listed in Required Mods.'):'';
+
+   let taggedCellInfo=null;
+   if(s.taggedCellKey){
+     const [x,y,z]=s.taggedCellKey.split('_').map(Number);
+     const val=lvl.grid[idx(x,z,y)];
+     if(val!==0){
+       const curTag=lvl.tags[s.taggedCellKey];
+       taggedCellInfo={x,y,z,blockName:PALETTE[val-1].name,curTag:curTag||null};
+     }
+   }
+   const tagDefs=TAGS.map(t=>({
+     ...t, assign:()=>this.assignTag(t.id),
+     bg:(taggedCellInfo&&taggedCellInfo.curTag===t.id)?t.color:'#2c2c30',
+     fg:(taggedCellInfo&&taggedCellInfo.curTag===t.id)?'#151515':'#c8c6cf'
+   }));
+
+   return {
+     metadata:s.metadata, showMissingModsBanner, missingModsText, addMissingModsToRequired:()=>this.addMissingModsToRequired(),
+     levelTabs, modChips, currentLevel:s.currentLevel,
+     modeTools, regionActions, clipboardActions, hoverOff:()=>this.setState({hoveredTool:null}),
+     tooltipInfo, tooltipInfoNot:!tooltipInfo, hasSelection, hasClipboard, selectionSizeLabel,
+     toolIsSelectMode: s.tool==='select', inspectedInfo, inspectedInfoNot:!inspectedInfo,
+     undo:()=>this.undo(), redo:()=>this.redo(), exportBlueprint:()=>this.exportBlueprint(), openResourcePack:()=>this.openResourcePack(),
+     isoCubes, hoverCubeStyle, gridCells, GX, GYmax:s.maxY-1, activeLayer:s.activeLayer,
+     maxY:s.maxY, setMaxY:(e)=>this.setMaxY(e.target.value),
+     gridX:s.gridX, gridZ:s.gridZ,
+     setGridX:(e)=>this.setGridSize(e.target.value,s.gridZ), setGridZ:(e)=>this.setGridSize(s.gridX,e.target.value),
+     isoScale:s.isoScale, gridScale:s.gridScale, isoScaleModal:s.isoScaleModal,
+     setIsoContainer:(el)=>this.setIsoContainer(el), setGridContainer:(el)=>this.setGridContainer(el), setIsoModalContainer:(el)=>this.setIsoModalContainer(el),
+     showIsoModal:s.showIsoModal, openIsoModal:()=>this.setState({showIsoModal:true}), closeIsoModal:()=>this.setState({showIsoModal:false}),
+     rotateLeft:()=>this.setState(st=>({isoRotation:(st.isoRotation+3)%4})), rotateRight:()=>this.setState(st=>({isoRotation:(st.isoRotation+1)%4})),
+     showSettingsModal:s.showSettingsModal, openSettings:()=>this.setState({showSettingsModal:true}), closeSettings:()=>this.setState({showSettingsModal:false}),
+     showTagMarkersColor:s.settingShowTagMarkers?'#8a6fd6':'#3a3a40', toggleShowTagMarkers:()=>this.setState(st=>({settingShowTagMarkers:!st.settingShowTagMarkers})),
+     showMirrorPreviewColor:s.settingShowMirrorPreview?'#8a6fd6':'#3a3a40', toggleShowMirrorPreview:()=>this.setState(st=>({settingShowMirrorPreview:!st.settingShowMirrorPreview})),
+     reduceMotionColor:s.settingReduceMotion?'#8a6fd6':'#3a3a40', toggleReduceMotion:()=>this.setState(st=>({settingReduceMotion:!st.settingReduceMotion})),
+     toastAnim: s.settingReduceMotion?'none':'toastIn .18s ease-out',
+     blockCount, footprintMismatchLabel: footprintMismatchCount>0?(footprintMismatchCount+' cells'):(s.currentLevel>1?'None':'N/A'),
+     footprintMismatchColor: footprintMismatchCount>0?'#e0a84a':'#5fbf6f',
+     worstIssueLabel: worstIssue.label, worstIssueColor: worstIssue.dotColor,
+     blockListGroups, blockListEmpty: blockListGroups.length===0,
+   packBuildingGroups: (()=>{
+     const cats=['CORE','PRODUCTION & CRAFTING','FOOD & HOSPITALITY','ANIMALS','MILITARY & DEFENCE','EDUCATION & RESEARCH','UTILITY & SPECIAL'];
+     return cats.map(cat=>({
+       catLabel:cat,
+       items: PACK_BUILDINGS.filter(b=>b.category===cat).map(b=>{
+         const exists=s.existingHutTypes.includes(b.name);
+         const missingRequired=b.required && !exists;
+         const mono=b.name.replace(/\(.*?\)/g,'').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+         return {
+           name:b.name, desc:b.desc, required:b.required, exists, existsNot:!exists, mono,
+           opacity: exists?1:0.45,
+           borderColor: missingRequired?'#d9534f':(exists?'#8a6fd6':'#2c2c30'),
+           select:()=>this.openBuilding(b.name)
+         };
+       })
+     }));
+   })(),
+     setActiveLayer:(e)=>this.setState({activeLayer:Number(e.target.value)}),
+     onGridMouseUp:()=>this.onGridMouseUp(), onGridMouseLeave:()=>this.onGridMouseLeave(),
+     toggleSymX:()=>this.setState(st=>({symmetryX:!st.symmetryX})), toggleSymZ:()=>this.setState(st=>({symmetryZ:!st.symmetryZ})),
+     symXBg:s.symmetryX?'#8a6fd6':'#232326', symZBg:s.symmetryZ?'#8a6fd6':'#232326',
+     toolIsTag:s.tool==='tag',
+     deselectSelection:()=>this.deselectSelection(),
+     ghostEnabled:s.ghostEnabled?'#8a6fd6':'#3a3a40', toggleGhost:()=>this.setState(st=>({ghostEnabled:!st.ghostEnabled})),
+     ghostAvailable:s.currentLevel>1, ghostAvailableNot:!(s.currentLevel>1),
+     setGhostLevel:(e)=>this.setState({ghostLevel:Number(e.target.value)}),
+     ghostLevelOptions:Array.from({length:Math.max(0,s.currentLevel-1)},(_,i)=>i+1),
+     taggedCellInfo, taggedCellInfoNot:!taggedCellInfo, tagDefs, clearTag:()=>this.clearTag(),
+     railTab:s.railTab, isPalette:s.railTab==='palette', isMetadata:s.railTab==='metadata', isBlockList:s.railTab==='blocklist', isPackBuildings:s.railTab==='packbuildings', isValidation:s.railTab==='validation',
+     setRailTabPalette:()=>this.setState({railTab:'palette'}), setRailTabMetadata:()=>this.setState({railTab:'metadata'}), setRailTabBlockList:()=>this.setState({railTab:'blocklist'}), setRailTabPackBuildings:()=>this.setState({railTab:'packbuildings'}), setRailTabValidation:()=>this.setState({railTab:'validation'}),
+     railTabPaletteBg:s.railTab==='palette'?'#232326':'transparent', railTabPaletteFg:s.railTab==='palette'?'#fff':'#8a8892', railTabPaletteBorder:s.railTab==='palette'?'#8a6fd6':'transparent',
+     railTabMetadataBg:s.railTab==='metadata'?'#232326':'transparent', railTabMetadataFg:s.railTab==='metadata'?'#fff':'#8a8892', railTabMetadataBorder:s.railTab==='metadata'?'#8a6fd6':'transparent',
+     railTabBlockListBg:s.railTab==='blocklist'?'#232326':'transparent', railTabBlockListFg:s.railTab==='blocklist'?'#fff':'#8a8892', railTabBlockListBorder:s.railTab==='blocklist'?'#8a6fd6':'transparent',
+     railTabPackBuildingsBg:s.railTab==='packbuildings'?'#232326':'transparent', railTabPackBuildingsFg:s.railTab==='packbuildings'?'#fff':'#8a8892', railTabPackBuildingsBorder:s.railTab==='packbuildings'?'#8a6fd6':'transparent',
+     railTabValidationBg:s.railTab==='validation'?'#232326':'transparent', railTabValidationFg:s.railTab==='validation'?'#fff':'#8a8892', railTabValidationBorder:s.railTab==='validation'?'#8a6fd6':'transparent',
+     search:s.search, setSearch:(e)=>this.setState({search:e.target.value}), paletteList, resourcePackLoaded:s.resourcePackLoaded,
+     validationIssues,
+     metaName:s.metadata.name, setMetaName:(e)=>this.updateMeta('name',e.target.value),
+     metaFileName:s.metadata.fileName,
+     hutTypeOptions:HUT_TYPES.map(h=>({id:h,label:h})), hutType:s.metadata.hutType,
+     setHutType:(e)=>this.setHutType(e.target.value),
+     metaPackName:s.metadata.packName, setMetaPackName:(e)=>this.updateMeta('packName',e.target.value),
+     metaMcVersion:s.metadata.mcVersion, setMetaMcVersion:(e)=>this.updateMeta('mcVersion',e.target.value),
+     offsetX:s.metadata.offset.x, offsetY:s.metadata.offset.y, offsetZ:s.metadata.offset.z,
+     setOffsetX:(e)=>this.updateOffset('x',e.target.value), setOffsetY:(e)=>this.updateOffset('y',e.target.value), setOffsetZ:(e)=>this.updateOffset('z',e.target.value),
+     requiredModsChips:s.metadata.requiredMods.map(m=>({id:m,label:m,remove:()=>this.setState(st=>({metadata:{...st.metadata,requiredMods:st.metadata.requiredMods.filter(x=>x!==m)}}))})),
+     newModInput:s.newModInput, setNewModInput:(e)=>this.setState({newModInput:e.target.value}), addNewMod:()=>this.addNewMod(),
+     showResourcePackModal:s.showResourcePackModal, rpProcessing:s.rpProcessing, rpError:s.rpError, rpMatchedCount:s.rpMatchedCount,
+     closeResourcePack:()=>this.closeResourcePack(), onResourcePackFile:(e)=>this.onResourcePackFile(e),
+     toast:s.toast
+   };
+ }
+}
+
+</script>
+</body>
+</html>
