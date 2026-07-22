@@ -77,7 +77,9 @@ export default function LayerGrid() {
   const highlightBlock = useEditorStore((s) => s.highlightBlock)
   const showToast = useEditorStore((s) => s.showToast)
 
-  const { gridX: GX, gridZ: GZ, showTagMarkers } = settings
+  const { showTagMarkers } = settings
+  const GX = blueprint?.sizeX ?? settings.gridX
+  const GZ = blueprint?.sizeZ ?? settings.gridZ
   const painting = useRef(false)
   const wandAnchor = useRef<{ x: number; z: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)

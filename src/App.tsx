@@ -7,7 +7,7 @@ import RightRail from '@/components/panels/RightRail'
 import MissingModsBanner from '@/components/modding/MissingModsBanner'
 import { useEditorStore } from '@/store/editorStore'
 import { useBlueprintStore, makeEmptyBlueprint, resizeBlueprint } from '@/store/blueprintStore'
-import { importResourcePack } from '@/lib/blocks/textures'
+import { importResourcePack, getMemCacheSnapshot } from '@/lib/blocks/textures'
 import { validateBlueprint } from '@/lib/blueprint/validate'
 
 export default function App() {
@@ -35,6 +35,7 @@ export default function App() {
   const setShow3DModal = useEditorStore((s) => s.setShow3DModal)
   const previewRotation = useEditorStore((s) => s.previewRotation)
   const setPreviewRotation = useEditorStore((s) => s.setPreviewRotation)
+  const setTextureMap = useEditorStore((s) => s.setTextureMap)
   const showToast = useEditorStore((s) => s.showToast)
 
   // ── Computed status bar values ────────────────────────────────────────────
@@ -118,8 +119,7 @@ export default function App() {
     setRpError(null)
     try {
       const count = await importResourcePack(file)
-      // Import updates the IDB cache; we need to propagate to state
-      // resolveColorSync already checks IDB, but for live UI update we reload
+      setTextureMap(getMemCacheSnapshot())
       showToast(`Resource pack loaded — ${count} texture${count !== 1 ? 's' : ''} matched`)
       setShowResourcePack(false)
     } catch (err) {

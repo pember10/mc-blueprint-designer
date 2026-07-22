@@ -9,12 +9,18 @@ import { getUnknownNamespaces } from '@/lib/blueprint/validate'
  */
 export default function MissingModsBanner() {
   const blueprint = useBlueprintStore((s) => s.blueprint)
+  const setBlueprint = useBlueprintStore((s) => s.setBlueprint)
   const [dismissed, setDismissed] = useState(false)
 
   if (!blueprint || dismissed) return null
 
   const unknown = getUnknownNamespaces(blueprint)
   if (unknown.length === 0) return null
+
+  const handleAddMods = () => {
+    const next = { ...blueprint, requiredMods: [...new Set([...blueprint.requiredMods, ...unknown])] }
+    setBlueprint(next)
+  }
 
   return (
     <div className="flex items-center gap-3 px-4 py-1.5 bg-amber-950/70 border-b border-amber-800 text-amber-200 text-xs shrink-0">
@@ -33,6 +39,12 @@ export default function MissingModsBanner() {
           {' '}— blocks will render as colour swatches. Import a resource pack for textures.
         </span>
       </p>
+      <button
+        onClick={handleAddMods}
+        className="px-2 py-0.5 rounded bg-amber-800/60 hover:bg-amber-700/60 text-amber-200 text-xs"
+      >
+        Add to Required Mods
+      </button>
       <button
         onClick={() => setDismissed(true)}
         className="text-amber-500 hover:text-amber-200 text-base leading-none px-1"

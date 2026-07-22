@@ -14,6 +14,7 @@ export default function Toolbar() {
   const setCurrentLevel = useEditorStore((s) => s.setCurrentLevel)
   const setActiveLayer = useEditorStore((s) => s.setActiveLayer)
   const settings = useEditorStore((s) => s.settings)
+  const updateSettings = useEditorStore((s) => s.updateSettings)
   const showToast = useEditorStore((s) => s.showToast)
   const setShowSettings = useEditorStore((s) => s.setShowSettings)
   const setShowResourcePack = useEditorStore((s) => s.setShowResourcePack)
@@ -37,7 +38,7 @@ export default function Toolbar() {
     try {
       const bp = await openBlueprintFile()
       setBlueprint(bp)
-      // Update settings to match loaded blueprint dimensions
+      updateSettings({ gridX: bp.sizeX, gridZ: bp.sizeZ, maxY: bp.sizeY })
       setActiveLayer(0)
       showToast(`Opened ${bp.meta.fileName || 'blueprint'}`)
     } catch {
@@ -65,19 +66,21 @@ export default function Toolbar() {
     showToast(`Exported ${exported.meta.fileName || 'blueprint'}.blueprint`)
   }
 
-  const handleLevelClick = async (lvl: number) => {
+  const handleLevelClick = (lvl: number) => {
     if (lvl === currentLevel) return
-    // In a full implementation, prompt to save current level first.
-    // For now, load a new file for the selected level.
-    try {
-      const bp = await openBlueprintFile()
-      setBlueprint(bp)
-      setCurrentLevel(lvl)
-      setActiveLayer(0)
-      showToast(`Loaded Level ${lvl}`)
-    } catch {
-      // user cancelled — don't switch level
+    const { gridX, gridZ, maxY } = settings
+    const bp = makeEmptyBlueprint(gridX, maxY, gridZ)
+    // Preserve building identity from current blueprint
+    if (blueprint) {
+      bp.meta.name = blueprint.meta.name
+      bp.meta.fileName = blueprint.meta.fileName
+      bp.meta.packName = blueprint.meta.packName
+      bp.requiredMods = [...blueprint.requiredMods]
     }
+    setBlueprint(bp)
+    setCurrentLevel(lvl)
+    setActiveLayer(0)
+    showToast(`Level ${lvl} — blank canvas (use Open\u2026 to load existing)`)
   }
 
   return (

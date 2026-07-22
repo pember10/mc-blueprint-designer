@@ -138,11 +138,23 @@ export async function resolveTexture(blockId: string): Promise<string> {
 }
 
 /**
- * Synchronous fallback for use in render loops — returns cached value or
- * the block's registered color as a CSS string.
+ * Synchronous fallback for use in render loops.
+ * Always returns a CSS hex color string from the block registry.
+ * (Never returns data URLs — use textureMap in editorStore for that.)
  */
 export function resolveColorSync(blockId: string): string {
-  if (memCache.has(blockId)) return memCache.get(blockId)!
   const entry = getBlock(blockId)
-  return entry?.color ?? '#aa44aa'
+  return entry?.color ?? '#888888'
+}
+
+/**
+ * Returns all data-URL entries currently in the memory cache.
+ * Call this after importResourcePack() to populate editorStore.textureMap.
+ */
+export function getMemCacheSnapshot(): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [k, v] of memCache.entries()) {
+    if (v.startsWith('data:')) out[k] = v
+  }
+  return out
 }

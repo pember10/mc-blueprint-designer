@@ -13,7 +13,7 @@ const BOX_GEO = new THREE.BoxGeometry(1, 1, 1)
  *
  * Blocks in the ghost are clickable (stamp interaction — handled in BlockInteraction).
  */
-export default function GhostVoxelGrid() {
+export default function GhostVoxelGrid({ allLayers = false }: { allLayers?: boolean }) {
   const ghostBlueprint = useBlueprintStore((s) => s.ghostBlueprint)
   const activeBlueprint = useBlueprintStore((s) => s.blueprint)
   const showGhost = useEditorStore((s) => s.showGhost)
@@ -24,8 +24,8 @@ export default function GhostVoxelGrid() {
     if (!ghostBlueprint || !showGhost) return new Map<number, THREE.Vector3[]>()
     const map = new Map<number, THREE.Vector3[]>()
     const { structure, sizeX, sizeY, sizeZ } = ghostBlueprint
-
-    for (let y = 0; y <= Math.min(activeLayer, sizeY - 1); y++) {
+    const maxY = allLayers ? sizeY - 1 : Math.min(activeLayer, sizeY - 1)
+    for (let y = 0; y <= maxY; y++) {
       for (let z = 0; z < sizeZ; z++) {
         for (let x = 0; x < sizeX; x++) {
           const ghostIdx = structure[y]?.[z]?.[x] ?? 0
@@ -45,7 +45,7 @@ export default function GhostVoxelGrid() {
       }
     }
     return map
-  }, [ghostBlueprint, activeBlueprint, showGhost, activeLayer])
+  }, [ghostBlueprint, activeBlueprint, showGhost, activeLayer, allLayers])
 
   if (!ghostBlueprint || !showGhost) return null
 

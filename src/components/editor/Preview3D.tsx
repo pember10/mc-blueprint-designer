@@ -38,7 +38,7 @@ export default function Preview3D({ height = 170 }: Preview3DProps) {
       <directionalLight position={[8, 16, 8]} intensity={0.8} castShadow />
       <Suspense fallback={null}>
         <VoxelGrid allLayers />
-        {showGhost && ghostBlueprint && <GhostVoxelGrid />}
+        {showGhost && ghostBlueprint && <GhostVoxelGrid allLayers />}
       </Suspense>
       <OrbitControls makeDefault enablePan enableZoom enableRotate />
     </Canvas>
