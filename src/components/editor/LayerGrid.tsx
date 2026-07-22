@@ -191,7 +191,9 @@ export default function LayerGrid() {
         const hasGhost = showGhost && gidx !== 0 && gname !== 'minecraft:air'
 
         const color = isAir ? null : resolveColorSync(bname)
-        const tex = !isAir ? textureMap[bname] ?? null : null
+        // Texture keys in the map are always property-stripped (from resource pack paths)
+        const texKey = bname.includes('[') ? bname.slice(0, bname.indexOf('[')) : bname
+        const tex = !isAir ? textureMap[texKey] ?? null : null
         const ghostCol = hasGhost ? resolveColorSync(gname) : null
 
         const key = `${x},${z}`

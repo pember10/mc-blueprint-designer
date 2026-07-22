@@ -175,13 +175,18 @@ export function getAllBlocks(): BlockEntry[] {
   return [..._registry.values()]
 }
 
-/** Look up a block entry by its full namespaced ID */
+/** Look up a block entry by its full namespaced ID.
+ * Strips blockstate properties (e.g. `minecraft:oak_stairs[facing=north,...]` → `minecraft:oak_stairs`)
+ * so real .blueprint files with blockstate data resolve correctly.
+ */
 export function getBlock(id: string): BlockEntry | undefined {
   // Domum Ornamentum blocks all map to the composite entry
   if (id.startsWith('domum_ornamentum:')) {
     return _registry.get('domum_ornamentum:__composite__')
   }
-  return _registry.get(id)
+  // Strip blockstate properties
+  const base = id.includes('[') ? id.slice(0, id.indexOf('[')) : id
+  return _registry.get(base)
 }
 
 /** Blocks grouped by namespace for the palette UI */

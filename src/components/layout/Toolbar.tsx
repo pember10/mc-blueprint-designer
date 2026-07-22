@@ -1,7 +1,7 @@
 import { useStore } from 'zustand'
 import { useBlueprintStore, makeEmptyBlueprint } from '@/store/blueprintStore'
 import { useEditorStore } from '@/store/editorStore'
-import { openBlueprintFile, downloadBlueprint } from '@/lib/io/localIO'
+import { openBlueprintFile, downloadBlueprint, downloadPackZip } from '@/lib/io/localIO'
 
 
 const LEVELS = [1, 2, 3, 4, 5]
@@ -18,6 +18,8 @@ export default function Toolbar() {
   const showToast = useEditorStore((s) => s.showToast)
   const setShowSettings = useEditorStore((s) => s.setShowSettings)
   const setShowResourcePack = useEditorStore((s) => s.setShowResourcePack)
+  const savedLevels = useEditorStore((s) => s.savedLevels)
+  const saveCurrentLevel = useEditorStore((s) => s.saveCurrentLevel)
   // Undo / redo from zundo temporal store
   const undo = () => useBlueprintStore.temporal.getState().undo()
   const redo = () => useBlueprintStore.temporal.getState().redo()
@@ -37,7 +39,10 @@ export default function Toolbar() {
   const handleOpen = async () => {
     try {
       const bp = await openBlueprintFile()
+      // Save current level before replacing with the opened file
+      if (blueprint) saveCurrentLevel(currentLevel, blueprint)
       setBlueprint(bp)
+      saveCurrentLevel(currentLevel, bp)
       updateSettings({ gridX: bp.sizeX, gridZ: bp.sizeZ, maxY: bp.sizeY })
       setActiveLayer(0)
       showToast(`Opened ${bp.meta.fileName || 'blueprint'}`)
@@ -60,27 +65,44 @@ export default function Toolbar() {
 
   const handleExport = () => {
     if (!blueprint) return
-    // Update fileName from metadata before exporting
     const exported = { ...blueprint }
     downloadBlueprint(exported)
     showToast(`Exported ${exported.meta.fileName || 'blueprint'}.blueprint`)
   }
 
+  const handleExportPack = async () => {
+    // Include current blueprint in the snapshot before exporting
+    const snap: Record<number, import('@/lib/blueprint/types').Blueprint> = { ...savedLevels }
+    if (blueprint) snap[currentLevel] = blueprint
+    const levelCount = Object.keys(snap).length
+    if (levelCount === 0) { showToast('No blueprints to export'); return }
+    const packName = blueprint?.meta.packName || blueprint?.meta.fileName || 'pack'
+    const count = await downloadPackZip(snap, packName)
+    showToast(`Exported pack: ${count} level${count !== 1 ? 's' : ''} in ${packName}.zip`)
+  }
+
   const handleLevelClick = (lvl: number) => {
     if (lvl === currentLevel) return
-    const { gridX, gridZ, maxY } = settings
-    const bp = makeEmptyBlueprint(gridX, maxY, gridZ)
-    // Preserve building identity from current blueprint
-    if (blueprint) {
-      bp.meta.name = blueprint.meta.name
-      bp.meta.fileName = blueprint.meta.fileName
-      bp.meta.packName = blueprint.meta.packName
-      bp.requiredMods = [...blueprint.requiredMods]
+    // Persist the current blueprint before leaving
+    if (blueprint) saveCurrentLevel(currentLevel, blueprint)
+    // Restore previously saved blueprint for target level, or create blank
+    const saved = savedLevels[lvl]
+    if (saved) {
+      setBlueprint(saved)
+      updateSettings({ gridX: saved.sizeX, gridZ: saved.sizeZ, maxY: saved.sizeY })
+    } else {
+      const { gridX, gridZ, maxY } = settings
+      const bp = makeEmptyBlueprint(gridX, maxY, gridZ)
+      if (blueprint) {
+        bp.meta.name = blueprint.meta.name
+        bp.meta.fileName = blueprint.meta.fileName
+        bp.meta.packName = blueprint.meta.packName
+        bp.requiredMods = [...blueprint.requiredMods]
+      }
+      setBlueprint(bp)
     }
-    setBlueprint(bp)
     setCurrentLevel(lvl)
     setActiveLayer(0)
-    showToast(`Level ${lvl} — blank canvas (use Open\u2026 to load existing)`)
   }
 
   return (
@@ -114,20 +136,27 @@ export default function Toolbar() {
       <div style={{ display: 'flex', gap: 5, background: '#232326', padding: 4, borderRadius: 10 }}>
         {LEVELS.map((lvl) => {
           const active = lvl === currentLevel
+          const hasSave = !!(savedLevels[lvl] || active)
           return (
             <button
               key={lvl}
               onClick={() => handleLevelClick(lvl)}
-              title={lvl === currentLevel ? `Level ${lvl} (current)` : `Load Level ${lvl}`}
+              title={`Level ${lvl}${savedLevels[lvl] ? ' (saved)' : ' (blank)'}`}
               style={{
                 border: 'none', borderRadius: '50%', width: 38, height: 38, flexShrink: 0,
-                fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                fontSize: 12.5, fontWeight: 700, cursor: 'pointer', position: 'relative',
                 background: active ? '#8a6fd6' : 'transparent',
-                color: active ? '#fff' : '#6a6870',
+                color: active ? '#fff' : hasSave ? '#c8c6cf' : '#6a6870',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
               {lvl}
+              {savedLevels[lvl] && !active && (
+                <span style={{
+                  position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
+                  width: 4, height: 4, borderRadius: '50%', background: '#8a6fd6',
+                }} />
+              )}
             </button>
           )
         })}
@@ -152,7 +181,19 @@ export default function Toolbar() {
             whiteSpace: 'nowrap',
           }}
         >
-          Export .blueprint
+          Export Level
+        </button>
+        <button
+          onClick={handleExportPack}
+          disabled={!blueprint}
+          style={{
+            background: 'transparent', color: '#8a6fd6', border: '1px solid #8a6fd6',
+            borderRadius: 7, padding: '9px 16px', fontSize: 12.5, fontWeight: 600,
+            cursor: blueprint ? 'pointer' : 'default', opacity: blueprint ? 1 : 0.5,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Export Pack
         </button>
         <button
           onClick={() => setShowSettings(true)}

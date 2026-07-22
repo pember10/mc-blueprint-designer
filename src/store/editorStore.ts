@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ToolMode } from '@/lib/blueprint/types'
+import type { Blueprint, ToolMode } from '@/lib/blueprint/types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -128,6 +128,10 @@ interface EditorStore {
   setShowResourcePack: (v: boolean) => void
   show3DModal: boolean
   setShow3DModal: (v: boolean) => void
+
+  // Per-level blueprint snapshots: key = level number (1-5)
+  savedLevels: Record<number, Blueprint>
+  saveCurrentLevel: (level: number, bp: Blueprint) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -230,4 +234,8 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   setShowResourcePack: (v) => set({ showResourcePack: v }),
   show3DModal: false,
   setShow3DModal: (v) => set({ show3DModal: v }),
+
+  savedLevels: {},
+  saveCurrentLevel: (level, bp) =>
+    set((s) => ({ savedLevels: { ...s.savedLevels, [level]: bp } })),
 }))

@@ -2,7 +2,7 @@
 
 A web-based 3D editor for [MineColonies](https://minecolonies.com/) / [Structurize](https://github.com/ldtteam/Structurize) `.blueprint` files, built with React, Three.js, and TypeScript.
 
-![Screenshot](docs/screenshot.png)
+![Screenshot](docs/ui-placeholder.png)
 
 ## Features
 

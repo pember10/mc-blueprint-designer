@@ -9,6 +9,7 @@ import { useEditorStore } from '@/store/editorStore'
 import { useBlueprintStore, makeEmptyBlueprint, resizeBlueprint } from '@/store/blueprintStore'
 import { importResourcePack, getMemCacheSnapshot } from '@/lib/blocks/textures'
 import { validateBlueprint } from '@/lib/blueprint/validate'
+import { parseBlueprintFile } from '@/lib/io/localIO'
 
 export default function App() {
   const setBlueprint = useBlueprintStore((s) => s.setBlueprint)
@@ -37,6 +38,8 @@ export default function App() {
   const setPreviewRotation = useEditorStore((s) => s.setPreviewRotation)
   const setTextureMap = useEditorStore((s) => s.setTextureMap)
   const showToast = useEditorStore((s) => s.showToast)
+  const saveCurrentLevel = useEditorStore((s) => s.saveCurrentLevel)
+  const currentLevel_forSave = useEditorStore((s) => s.currentLevel)
 
   // ── Computed status bar values ────────────────────────────────────────────
 
@@ -129,6 +132,32 @@ export default function App() {
     }
   }
 
+  // ── Drag-and-drop file open ───────────────────────────────────────────────
+
+  const [isDragOver, setIsDragOver] = useState(false)
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (!file) return
+    if (!file.name.endsWith('.blueprint')) {
+      showToast('Drop a .blueprint file to open it')
+      return
+    }
+    try {
+      const bp = await parseBlueprintFile(file)
+      if (blueprint) saveCurrentLevel(currentLevel_forSave, blueprint)
+      setBlueprint(bp)
+      saveCurrentLevel(currentLevel_forSave, bp)
+      updateSettings({ gridX: bp.sizeX, gridZ: bp.sizeZ, maxY: bp.sizeY })
+      setActiveLayer(0)
+      showToast(`Opened ${bp.meta.fileName || 'blueprint'}`)
+    } catch {
+      showToast('Failed to open blueprint — file may be invalid')
+    }
+  }
+
   // ── Settings change: resize blueprint ────────────────────────────────────
 
   const handleSettingsChange = (patch: { maxY?: number; gridX?: number; gridZ?: number }) => {
@@ -165,7 +194,24 @@ export default function App() {
         <LeftPanel />
 
         {/* Center: grid + status */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, position: 'relative' }}>
+        <div
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, position: 'relative' }}
+          onDrop={handleDrop}
+          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false) }}
+        >
+          {isDragOver && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 100,
+              background: 'rgba(138,111,214,0.18)',
+              border: '2px dashed #8a6fd6',
+              borderRadius: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              pointerEvents: 'none',
+            }}>
+              <span style={{ color: '#8a6fd6', fontWeight: 700, fontSize: 15 }}>Drop .blueprint to open</span>
+            </div>
+          )}
 
           {/* Grid header */}
           <div style={{

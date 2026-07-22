@@ -4,6 +4,7 @@
 
 import type { Blueprint } from './types'
 import { getBlock } from '@/lib/blocks/registry'
+import { BUILDINGS } from '@/lib/minecolonies/buildings'
 
 export type Severity = 'error' | 'warning' | 'info'
 
@@ -113,6 +114,27 @@ export function validateBlueprint(bp: Blueprint, ghost?: Blueprint | null): Issu
       message: 'Blueprint is empty',
       detail: 'No non-air blocks have been placed yet.',
     })
+  }
+
+  // -- Warning: missing hut block --
+  if (bp.meta.name) {
+    const building = BUILDINGS.find((b) => b.name === bp.meta.name)
+    if (building) {
+      const expectedBlock = `minecolonies:blockhut${building.hutId}`
+      const paletteNames = bp.palette.map((bs) => bs?.name ?? '')
+      const hasHutBlock = paletteNames.some((n) => {
+        const base = n.includes('[') ? n.slice(0, n.indexOf('[')) : n
+        return base === expectedBlock
+      })
+      if (!hasHutBlock) {
+        issues.push({
+          id: 'missing-hut-block',
+          severity: 'warning',
+          message: `Missing hut block: ${expectedBlock}`,
+          detail: `MineColonies requires a "${expectedBlock}" block to be placed in this blueprint for the colony to recognise it as a ${building.name}.`,
+        })
+      }
+    }
   }
 
   return issues
