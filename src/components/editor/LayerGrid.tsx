@@ -7,7 +7,7 @@ import { resolveColorSync } from '@/lib/blocks/textures'
 // Constants
 // ---------------------------------------------------------------------------
 
-const CELL = 30
+const BASE_CELL = 30
 const GAP = 2
 const PAD = 10
 
@@ -83,22 +83,51 @@ export default function LayerGrid() {
   const painting = useRef(false)
   const wandAnchor = useRef<{ x: number; z: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [gridScale, setGridScale] = useState(1)
+  const [autoFitScale, setAutoFitScale] = useState(1)
+  const [userZoom, setUserZoom] = useState(1)
+  const cellSize = Math.max(6, Math.round(BASE_CELL * autoFitScale * userZoom))
 
-  // Scale grid to fit container
+  // Auto-fit scale: shrink to fit container, never enlarge
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const obs = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect
-      const gridW = GX * CELL + (GX - 1) * GAP + PAD * 2
-      const gridH = GZ * CELL + (GZ - 1) * GAP + PAD * 2
+      const gridW = GX * BASE_CELL + (GX - 1) * GAP + PAD * 2
+      const gridH = GZ * BASE_CELL + (GZ - 1) * GAP + PAD * 2
       const s = Math.min(width / gridW, height / gridH, 1)
-      setGridScale(s > 0 ? s : 1)
+      setAutoFitScale(s > 0 ? s : 1)
     })
     obs.observe(el)
     return () => obs.disconnect()
   }, [GX, GZ])
+
+  // Ctrl+scroll to zoom
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+      setUserZoom((prev) => Math.min(Math.max(prev * factor, 0.25), 6))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  // Keep viewport center stable when zoom changes
+  const prevUserZoomRef = useRef(1)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || userZoom === prevUserZoomRef.current) return
+    const factor = userZoom / prevUserZoomRef.current
+    const cx = el.scrollLeft + el.clientWidth / 2
+    const cy = el.scrollTop + el.clientHeight / 2
+    el.scrollLeft = cx * factor - el.clientWidth / 2
+    el.scrollTop = cy * factor - el.clientHeight / 2
+    prevUserZoomRef.current = userZoom
+  }, [userZoom])
 
   // ── Apply tool ────────────────────────────────────────────────────────────
 
@@ -229,16 +258,22 @@ export default function LayerGrid() {
   return (
     <div
       ref={containerRef}
-      style={{ flex: 1, minHeight: 0, width: '100%', overflow: 'hidden', padding: 8,
-               display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative', overflow: 'auto' }}
     >
-      <div style={{ flexShrink: 0, transform: `scale(${gridScale})`, transformOrigin: 'center center' }}>
+      {/* Centering wrapper: expands to at least fill the scroll viewport so the
+          grid stays centered when small, and lets it overflow (scroll) when large */}
+      <div style={{
+        minWidth: '100%', minHeight: '100%',
+        boxSizing: 'border-box', padding: 8,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
         <div
           onMouseUp={onGridUp}
           onMouseLeave={onGridLeave}
           style={{
+            flexShrink: 0,
             display: 'grid',
-            gridTemplateColumns: `repeat(${GX}, ${CELL}px)`,
+            gridTemplateColumns: `repeat(${GX}, ${cellSize}px)`,
             gap: GAP,
             background: '#0d0d0f',
             padding: PAD,
@@ -252,7 +287,7 @@ export default function LayerGrid() {
               onMouseDown={() => onCellDown(cell.x, cell.z)}
               onMouseEnter={() => onCellEnter(cell.x, cell.z)}
               style={{
-                width: CELL, height: CELL, position: 'relative', cursor: 'pointer',
+                width: cellSize, height: cellSize, position: 'relative', cursor: 'pointer',
                 background: cell.bgColor,
                 backgroundImage: cell.tex ? `url(${cell.tex})` : 'repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 3px,transparent 3px 6px)',
                 backgroundSize: cell.tex ? 'cover' : undefined,
@@ -263,12 +298,12 @@ export default function LayerGrid() {
                 borderRadius: 1,
               }}
             >
-              {cell.tagId && (
+              {cell.tagId && cellSize >= 14 && (
                 <div style={{
                   position: 'absolute', bottom: 2, right: 2,
-                  width: 12, height: 12, borderRadius: 3,
+                  width: Math.round(cellSize * 0.4), height: Math.round(cellSize * 0.4), borderRadius: 3,
                   background: tagColor(cell.tagId), color: '#161616',
-                  fontSize: 8, fontWeight: 800,
+                  fontSize: Math.max(6, Math.round(cellSize * 0.27)), fontWeight: 800,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {tagLetter(cell.tagId)}
@@ -277,6 +312,37 @@ export default function LayerGrid() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Zoom controls */}
+      <div style={{
+        position: 'absolute', bottom: 10, left: 10,
+        display: 'flex', alignItems: 'center', gap: 2,
+        background: 'rgba(13,13,15,0.75)', border: '1px solid #2c2c30',
+        borderRadius: 7, padding: '3px 5px',
+        backdropFilter: 'blur(4px)',
+      }}>
+        {(['−', '·', '+'] as const).map((label) => (
+          <button
+            key={label}
+            onClick={() => {
+              if (label === '−') setUserZoom((p) => Math.max(p / 1.3, 0.25))
+              else if (label === '+') setUserZoom((p) => Math.min(p * 1.3, 6))
+              else setUserZoom(1)
+            }}
+            title={label === '·' ? 'Reset zoom' : label === '+' ? 'Zoom in (Ctrl+scroll)' : 'Zoom out (Ctrl+scroll)'}
+            style={{
+              border: 'none', borderRadius: 5, width: label === '·' ? 'auto' : 22, height: 22,
+              padding: label === '·' ? '0 6px' : 0,
+              background: label === '·' ? 'transparent' : '#232326',
+              color: label === '·' ? '#8a8892' : '#c8c6cf',
+              fontSize: label === '·' ? 10.5 : 14, fontWeight: label === '·' ? 400 : 700,
+              cursor: 'pointer', lineHeight: 1,
+            }}
+          >
+            {label === '·' ? `${Math.round(autoFitScale * userZoom * 100)}%` : label}
+          </button>
+        ))}
       </div>
     </div>
   )

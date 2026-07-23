@@ -5,3 +5,65 @@
     @apply w-full rounded bg-zinc-800 border border-zinc-600 text-zinc-100 text-xs px-2 py-1 placeholder-zinc-500 focus:outline-none focus:border-indigo-500;
   }
 }
+
+/* ── Custom scrollbars ── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3a3a44;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6a52b0;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a44 transparent;
+}
+
+/* ── Range input (layer slider) ── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: #2c2c30;
+  outline: none;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8a6fd6;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(138, 111, 214, 0.25);
+  transition: box-shadow 0.15s;
+}
+input[type='range']::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 4px rgba(138, 111, 214, 0.35);
+}
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8a6fd6;
+  border: none;
+  cursor: pointer;
+}
+input[type='range']::-moz-range-track {
+  height: 4px;
+  background: #2c2c30;
+  border-radius: 2px;
+}

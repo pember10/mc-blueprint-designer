@@ -2,6 +2,7 @@ import { useStore } from 'zustand'
 import { useBlueprintStore, makeEmptyBlueprint } from '@/store/blueprintStore'
 import { useEditorStore } from '@/store/editorStore'
 import { openBlueprintFile, downloadBlueprint, downloadPackZip } from '@/lib/io/localIO'
+import { BUILDINGS } from '@/lib/minecolonies/buildings'
 
 
 const LEVELS = [1, 2, 3, 4, 5]
@@ -9,7 +10,6 @@ const LEVELS = [1, 2, 3, 4, 5]
 export default function Toolbar() {
   const blueprint = useBlueprintStore((s) => s.blueprint)
   const setBlueprint = useBlueprintStore((s) => s.setBlueprint)
-  const setGhost = useBlueprintStore((s) => s.setGhost)
   const currentLevel = useEditorStore((s) => s.currentLevel)
   const setCurrentLevel = useEditorStore((s) => s.setCurrentLevel)
   const setActiveLayer = useEditorStore((s) => s.setActiveLayer)
@@ -20,6 +20,7 @@ export default function Toolbar() {
   const setShowResourcePack = useEditorStore((s) => s.setShowResourcePack)
   const savedLevels = useEditorStore((s) => s.savedLevels)
   const saveCurrentLevel = useEditorStore((s) => s.saveCurrentLevel)
+  const markLevelExported = useEditorStore((s) => s.markLevelExported)
   // Undo / redo from zundo temporal store
   const undo = () => useBlueprintStore.temporal.getState().undo()
   const redo = () => useBlueprintStore.temporal.getState().redo()
@@ -51,33 +52,27 @@ export default function Toolbar() {
     }
   }
 
-  const handleLoadGhost = async () => {
-    try {
-      const bp = await openBlueprintFile()
-      const match = bp.meta.fileName?.match(/(\d+)/)
-      const level = match ? parseInt(match[1]) : null
-      setGhost(bp, level)
-      showToast(`Ghost loaded: Level ${level ?? '?'}`)
-    } catch {
-      // user cancelled
-    }
-  }
-
   const handleExport = () => {
     if (!blueprint) return
     const exported = { ...blueprint }
     downloadBlueprint(exported)
+    const building = BUILDINGS.find((b) => b.name === blueprint.meta.name)
+    if (building) markLevelExported(building.name, currentLevel)
     showToast(`Exported ${exported.meta.fileName || 'blueprint'}.blueprint`)
   }
 
   const handleExportPack = async () => {
-    // Include current blueprint in the snapshot before exporting
     const snap: Record<number, import('@/lib/blueprint/types').Blueprint> = { ...savedLevels }
     if (blueprint) snap[currentLevel] = blueprint
     const levelCount = Object.keys(snap).length
     if (levelCount === 0) { showToast('No blueprints to export'); return }
     const packName = blueprint?.meta.packName || blueprint?.meta.fileName || 'pack'
     const count = await downloadPackZip(snap, packName)
+    // Mark all exported levels as done
+    const building = blueprint ? BUILDINGS.find((b) => b.name === blueprint.meta.name) : null
+    if (building) {
+      for (const lvl of Object.keys(snap)) markLevelExported(building.name, Number(lvl))
+    }
     showToast(`Exported pack: ${count} level${count !== 1 ? 's' : ''} in ${packName}.zip`)
   }
 
@@ -136,12 +131,13 @@ export default function Toolbar() {
       <div style={{ display: 'flex', gap: 5, background: '#232326', padding: 4, borderRadius: 10 }}>
         {LEVELS.map((lvl) => {
           const active = lvl === currentLevel
-          const hasSave = !!(savedLevels[lvl] || active)
+          const hasBlocks = (savedLevels[lvl]?.palette.length ?? 0) > 1
+          const hasSave = hasBlocks || active
           return (
             <button
               key={lvl}
               onClick={() => handleLevelClick(lvl)}
-              title={`Level ${lvl}${savedLevels[lvl] ? ' (saved)' : ' (blank)'}`}
+              title={`Level ${lvl}${hasBlocks ? ' (has blocks)' : ' (empty)'}`}
               style={{
                 border: 'none', borderRadius: '50%', width: 38, height: 38, flexShrink: 0,
                 fontSize: 12.5, fontWeight: 700, cursor: 'pointer', position: 'relative',
@@ -150,8 +146,8 @@ export default function Toolbar() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              {lvl}
-              {savedLevels[lvl] && !active && (
+              {`L${lvl}`}
+              {hasBlocks && !active && (
                 <span style={{
                   position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
                   width: 4, height: 4, borderRadius: '50%', background: '#8a6fd6',
@@ -169,7 +165,6 @@ export default function Toolbar() {
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <TBtn onClick={handleNew}>New</TBtn>
         <TBtn onClick={handleOpen}>Open…</TBtn>
-        <TBtn onClick={handleLoadGhost}>Ghost…</TBtn>
         <TBtn onClick={() => setShowResourcePack(true)}>Import Resource Pack</TBtn>
         <button
           onClick={handleExport}

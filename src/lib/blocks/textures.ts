@@ -12,19 +12,29 @@ import JSZip from 'jszip'
 import { getBlock } from './registry'
 
 const DB_NAME = 'mc-blueprint-textures'
+const DB_VERSION = 2
 const STORE_NAME = 'textures'
+const BLOCKSTATES_STORE = 'blockstates'
+const MODELS_STORE = 'models'
 
 // In-memory cache: blockId → data URL
 const memCache = new Map<string, string>()
+// In-memory cache for parsed JSON (avoids repeated IDB reads)
+const bsMemCache = new Map<string, unknown>()
+const modelMemCache = new Map<string, unknown>()
 
 // ---------------------------------------------------------------------------
 // IndexedDB helpers
 // ---------------------------------------------------------------------------
 
 async function getDb() {
-  return openDB(DB_NAME, 1, {
-    upgrade(db) {
-      db.createObjectStore(STORE_NAME)
+  return openDB(DB_NAME, DB_VERSION, {
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) db.createObjectStore(STORE_NAME)
+      if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains(BLOCKSTATES_STORE)) db.createObjectStore(BLOCKSTATES_STORE)
+        if (!db.objectStoreNames.contains(MODELS_STORE)) db.createObjectStore(MODELS_STORE)
+      }
     },
   })
 }
@@ -38,18 +48,93 @@ async function dbGet(key: string): Promise<string | undefined> {
   }
 }
 
-async function dbPut(key: string, value: string): Promise<void> {
+export async function getBlockstateJson(key: string): Promise<unknown | null> {
+  if (bsMemCache.has(key)) return bsMemCache.get(key)!
   try {
     const db = await getDb()
-    await db.put(STORE_NAME, value, key)
-  } catch {
-    // Non-fatal
-  }
+    const raw: string | undefined = await db.get(BLOCKSTATES_STORE, key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    bsMemCache.set(key, parsed)
+    return parsed
+  } catch { return null }
+}
+
+export async function getModelJson(key: string): Promise<unknown | null> {
+  if (modelMemCache.has(key)) return modelMemCache.get(key)!
+  try {
+    const db = await getDb()
+    const raw: string | undefined = await db.get(MODELS_STORE, key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    modelMemCache.set(key, parsed)
+    return parsed
+  } catch { return null }
+}
+
+export function clearBlockModelCaches(): void {
+  bsMemCache.clear()
+  modelMemCache.clear()
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder generator
+// JAR / resource-pack import helpers
 // ---------------------------------------------------------------------------
+
+async function ingestZip(
+  zip: JSZip,
+  onProgress?: (msg: string) => void,
+): Promise<{ textures: number; blockstates: number; models: number }> {
+  let textures = 0, blockstates = 0, models = 0
+  const db = await getDb()
+
+  for (const [path, entry] of Object.entries(zip.files)) {
+    if (entry.dir) continue
+
+    const texMatch = path.match(/^assets\/([^/]+)\/textures\/block\/(.+)\.png$/)
+    if (texMatch) {
+      const key = `${texMatch[1]}:${texMatch[2]}`
+      const blob = await entry.async('blob')
+      const dataUrl = await blobToDataUrl(blob)
+      memCache.set(key, dataUrl)
+      await db.put(STORE_NAME, dataUrl, key)
+      textures++
+      continue
+    }
+
+    const bsMatch = path.match(/^assets\/([^/]+)\/blockstates\/(.+)\.json$/)
+    if (bsMatch) {
+      const key = `${bsMatch[1]}:${bsMatch[2]}`
+      const text = await entry.async('text')
+      bsMemCache.set(key, JSON.parse(text))
+      await db.put(BLOCKSTATES_STORE, text, key)
+      blockstates++
+      continue
+    }
+
+    const modelMatch = path.match(/^assets\/([^/]+)\/models\/(.+)\.json$/)
+    if (modelMatch) {
+      const key = `${modelMatch[1]}:${modelMatch[2]}`
+      const text = await entry.async('text')
+      modelMemCache.set(key, JSON.parse(text))
+      await db.put(MODELS_STORE, text, key)
+      models++
+      continue
+    }
+  }
+
+  if (onProgress) onProgress(`Loaded ${textures} textures, ${blockstates} blockstates, ${models} models`)
+  return { textures, blockstates, models }
+}
+
+/** Import a vanilla Minecraft .jar (or any resource pack ZIP containing block assets). */
+export async function importMinecraftJar(
+  file: File,
+  onProgress?: (msg: string) => void,
+): Promise<{ textures: number; blockstates: number; models: number }> {
+  const zip = await JSZip.loadAsync(await file.arrayBuffer())
+  return ingestZip(zip, onProgress)
+}
 
 function makePlaceholder(color: string, size = 16): string {
   const canvas = document.createElement('canvas')
@@ -74,26 +159,11 @@ function makePlaceholder(color: string, size = 16): string {
 // Resource pack import
 // ---------------------------------------------------------------------------
 
-/** Load textures from a resource pack ZIP file into IndexedDB */
+/** Load textures (and optionally block models) from a resource pack ZIP file into IndexedDB */
 export async function importResourcePack(file: File): Promise<number> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer())
-  let count = 0
-
-  for (const [path, zipEntry] of Object.entries(zip.files)) {
-    // Match: assets/<modid>/textures/block/<name>.png
-    const match = path.match(/^assets\/([^/]+)\/textures\/block\/(.+)\.png$/)
-    if (!match) continue
-    const [, modId, texName] = match
-    const key = `${modId}:${texName}`
-
-    const blob = await zipEntry.async('blob')
-    const dataUrl = await blobToDataUrl(blob)
-    memCache.set(key, dataUrl)
-    await dbPut(key, dataUrl)
-    count++
-  }
-
-  return count
+  const { textures } = await ingestZip(zip)
+  return textures
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {

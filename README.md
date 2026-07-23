@@ -17,6 +17,7 @@ A web-based 3D editor for [MineColonies](https://minecolonies.com/) / [Structuri
 - **MineColonies tag picker** — click any block in Tag mode to attach MC tags
 - **Undo / Redo** via [zundo](https://github.com/charkour/zundo)
 - **Resource pack support** — import a `.zip` resource pack to display real block textures (IndexedDB cached)
+- **Vanilla block models** — import a Minecraft client `.jar` to render full block geometry with correct textures in the 3D preview
 
 ## Tech Stack
 
@@ -78,26 +79,35 @@ Structurize `.blueprint` files are **gzip-compressed NBT** (version 1). Key fiel
 src/
   lib/
     blueprint/   types.ts          — core data model & MineColonies tag catalogue
+                 validate.ts       — blueprint validation checks
     nbt/         parser.ts         — .blueprint → Blueprint
                  serializer.ts     — Blueprint → .blueprint
     blocks/      registry.ts       — block database (vanilla + modded)
-                 textures.ts       — texture resolver + resource pack importer
+                 textures.ts       — texture resolver, resource pack & JAR importer
+                 blockstate.ts     — blockstate JSON resolver (variants format)
+                 model.ts          — block model JSON resolver (parent chain)
+                 geometry.ts       — Three.js BufferGeometry builder from model data
                  vanilla-blocks-1.21.json  — pre-generated vanilla block list
+    minecolonies/ buildings.ts     — MineColonies building list & slugify helper
     io/          localIO.ts        — file open / download
   store/
     blueprintStore.ts — active blueprint state + undo/redo (zundo)
-    editorStore.ts    — transient editor UI state
+    editorStore.ts    — transient editor UI state (persisted via localStorage)
   components/
-    editor/      Viewport.tsx      — main R3F canvas
-                 VoxelGrid.tsx     — InstancedMesh per block type
-                 GhostVoxelGrid.tsx — semi-transparent ghost level
-                 Stage.tsx         — platform + grid helper
-                 BlockInteraction.tsx — raycasting / tool dispatch hook
-    panels/      BlockPalette.tsx  — searchable block grid
-                 MetadataPanel.tsx — name / size / anchor editor
-                 TagPanel.tsx      — MineColonies tag picker overlay
-    layout/      Toolbar.tsx       — tool buttons, symmetry, layer, file actions
-  App.tsx        — three-column layout + global keyboard shortcuts
+    editor/      LayerGrid.tsx     — 2D top-down editing grid (Ctrl+scroll to zoom)
+                 VoxelGrid.tsx     — InstancedMesh per block type (model or color fallback)
+                 GhostVoxelGrid.tsx — semi-transparent previous-level ghost
+                 Preview3D.tsx     — interactive 3D R3F canvas with OrbitControls
+    panels/      RightRail.tsx     — tabbed right panel host
+                 PaletteTab.tsx    — searchable block palette
+                 BlockListTab.tsx  — placed-block summary list
+                 MetadataTab.tsx   — name / size / anchor editor
+                 ValidationTab.tsx — blueprint issue list
+                 PackBuildingsTab.tsx — multi-building pack manager
+    layout/      Toolbar.tsx       — tool buttons, level tabs, file actions
+                 LeftPanel.tsx     — tools, symmetry, ghost overlay controls
+    modding/     MissingModsBanner.tsx — warns about unknown mod blocks
+  App.tsx        — root layout, modals, keyboard shortcuts, drag-and-drop
 scripts/
   generate-blocks.mjs  — extracts vanilla block list from minecraft-data (Node.js only)
 ```
@@ -105,58 +115,3 @@ scripts/
 ## Licence
 
 MIT
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```

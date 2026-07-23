@@ -15,32 +15,49 @@ const CAT_COLORS: Record<BuildingCategory, string> = {
 export default function PackBuildingsTab() {
   const sessionBuildings = useEditorStore((s) => s.sessionBuildings)
   const addSessionBuilding = useEditorStore((s) => s.addSessionBuilding)
+  const activeBuildingName = useEditorStore((s) => s.activeBuildingName)
+  const switchToBuilding = useEditorStore((s) => s.switchToBuilding)
+  const exportedBuildings = useEditorStore((s) => s.exportedBuildings)
+  const currentLevel = useEditorStore((s) => s.currentLevel)
   const setCurrentLevel = useEditorStore((s) => s.setCurrentLevel)
   const setActiveLayer = useEditorStore((s) => s.setActiveLayer)
   const settings = useEditorStore((s) => s.settings)
+  const saveCurrentLevel = useEditorStore((s) => s.saveCurrentLevel)
+  const updateSettings = useEditorStore((s) => s.updateSettings)
   const showToast = useEditorStore((s) => s.showToast)
   const blueprint = useBlueprintStore((s) => s.blueprint)
   const setBlueprint = useBlueprintStore((s) => s.setBlueprint)
 
   const openBuilding = (name: string) => {
-    const alreadyExists = sessionBuildings.includes(name)
-    if (alreadyExists) {
-      // Already worked on this session — just switch to it (would need a file re-open
-      // in a full implementation; for now just notify)
-      showToast(`${name} was already opened this session. Use File → Open to reload.`)
-      return
+    if (activeBuildingName === name) return // already active
+
+    // Save current level before switching buildings
+    if (blueprint) saveCurrentLevel(currentLevel, blueprint)
+
+    // Switch building — flushes savedLevels to old building's snapshot and loads new one
+    switchToBuilding(name)
+
+    // Read restored levels synchronously
+    const newLevels = useEditorStore.getState().savedLevels
+    const restoredBp = newLevels[1]
+
+    if (restoredBp) {
+      setBlueprint(restoredBp)
+      updateSettings({ gridX: restoredBp.sizeX, gridZ: restoredBp.sizeZ, maxY: restoredBp.sizeY })
+      showToast(`Resumed ${name}`)
+    } else {
+      const { gridX, gridZ, maxY } = settings
+      const bp = makeEmptyBlueprint(gridX, maxY, gridZ)
+      bp.meta.name = name
+      bp.meta.fileName = slugifyBuilding(name)
+      bp.requiredMods = ['minecolonies', 'structurize']
+      setBlueprint(bp)
+      showToast(`Started ${name} — Level 1`)
     }
-    // Create fresh blueprint for this building
-    const { gridX, gridZ, maxY } = settings
-    const bp = makeEmptyBlueprint(gridX, maxY, gridZ)
-    bp.meta.name = name
-    bp.meta.fileName = slugifyBuilding(name)
-    bp.requiredMods = ['minecolonies', 'structurize']
-    setBlueprint(bp)
+
     setCurrentLevel(1)
     setActiveLayer(0)
     addSessionBuilding(name)
-    showToast(`Started ${name} — Level 1`)
   }
 
   return (
@@ -54,8 +71,12 @@ export default function PackBuildingsTab() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
               {items.map((b) => {
-                const exists = sessionBuildings.includes(b.name)
-                const isActive = blueprint?.meta.name === b.name
+                const started = sessionBuildings.includes(b.name)
+                const isActive = activeBuildingName === b.name
+                const exported = exportedBuildings[b.name] ?? []
+                const exportedCount = exported.length
+                const allDone = exportedCount === 5
+
                 return (
                   <button
                     key={b.name}
@@ -63,22 +84,30 @@ export default function PackBuildingsTab() {
                     title={b.desc}
                     style={{
                       display: 'flex', flexDirection: 'column', gap: 6,
-                      border: `1.5px solid ${isActive ? '#8a6fd6' : exists ? '#4a4a52' : '#2c2c30'}`,
+                      border: `1.5px solid ${isActive ? '#8a6fd6' : allDone ? '#4a7a4a' : started ? '#4a4a52' : '#2c2c30'}`,
                       borderRadius: 8, padding: 8,
-                      background: isActive ? '#2a2330' : '#1f1f23',
-                      opacity: exists && !isActive ? 0.85 : 1,
+                      background: isActive ? '#2a2330' : allDone ? '#1f2a1f' : '#1f1f23',
+                      opacity: started && !isActive ? 0.85 : 1,
                       cursor: 'pointer',
                       textAlign: 'left',
                     }}
                   >
-                    {exists ? (
+                    {allDone ? (
+                      <div style={{
+                        height: 40, borderRadius: 5, background: '#1a2e1a',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                        color: '#6fae6f', fontSize: 12, fontWeight: 700,
+                      }}>
+                        ✓ 5/5
+                      </div>
+                    ) : started ? (
                       <div style={{
                         height: 40, borderRadius: 5,
                         background: 'repeating-linear-gradient(45deg,#2c2c30 0 4px,#26262a 4px 8px)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#6a6870', fontSize: 8, fontFamily: 'ui-monospace,monospace',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                        color: '#8a8892', fontSize: 9, fontFamily: 'ui-monospace,monospace',
                       }}>
-                        Level 1–5
+                        {exportedCount > 0 ? `${exportedCount}/5 done` : 'Level 1–5'}
                       </div>
                     ) : (
                       <div style={{

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Toolbar from '@/components/layout/Toolbar'
 import LeftPanel from '@/components/layout/LeftPanel'
 import LayerGrid from '@/components/editor/LayerGrid'
@@ -7,7 +7,7 @@ import RightRail from '@/components/panels/RightRail'
 import MissingModsBanner from '@/components/modding/MissingModsBanner'
 import { useEditorStore } from '@/store/editorStore'
 import { useBlueprintStore, makeEmptyBlueprint, resizeBlueprint } from '@/store/blueprintStore'
-import { importResourcePack, getMemCacheSnapshot } from '@/lib/blocks/textures'
+import { importResourcePack, importMinecraftJar, getMemCacheSnapshot } from '@/lib/blocks/textures'
 import { validateBlueprint } from '@/lib/blueprint/validate'
 import { parseBlueprintFile } from '@/lib/io/localIO'
 
@@ -34,8 +34,61 @@ export default function App() {
   const setShowResourcePack = useEditorStore((s) => s.setShowResourcePack)
   const show3DModal = useEditorStore((s) => s.show3DModal)
   const setShow3DModal = useEditorStore((s) => s.setShow3DModal)
-  const previewRotation = useEditorStore((s) => s.previewRotation)
-  const setPreviewRotation = useEditorStore((s) => s.setPreviewRotation)
+  const setModelDataLoaded = useEditorStore((s) => s.setModelDataLoaded)
+
+  // 3D modal drag-to-move
+  const [dragDelta, setDragDelta] = useState({ x: 0, y: 0 })
+  const dragRef = useRef<{ mx: number; my: number; dx: number; dy: number } | null>(null)
+  useEffect(() => { if (show3DModal) setDragDelta({ x: 0, y: 0 }) }, [show3DModal])
+
+  const handleModalTitleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { mx: e.clientX, my: e.clientY, dx: dragDelta.x, dy: dragDelta.y }
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      setDragDelta({
+        x: dragRef.current.dx + ev.clientX - dragRef.current.mx,
+        y: dragRef.current.dy + ev.clientY - dragRef.current.my,
+      })
+    }
+    const onUp = () => {
+      dragRef.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
+  // Small inline preview drag-to-move
+  const previewPanelRef = useRef<HTMLDivElement>(null)
+  const [previewPos, setPreviewPos] = useState<{ top: number; left: number } | null>(null)
+  const previewDragRef = useRef<{ mx: number; my: number; top: number; left: number } | null>(null)
+
+  const handlePreviewTitleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const panel = previewPanelRef.current
+    if (!panel) return
+    const panelRect = panel.getBoundingClientRect()
+    const parentRect = panel.parentElement!.getBoundingClientRect()
+    const startTop = previewPos?.top ?? (panelRect.top - parentRect.top)
+    const startLeft = previewPos?.left ?? (panelRect.left - parentRect.left)
+    previewDragRef.current = { mx: e.clientX, my: e.clientY, top: startTop, left: startLeft }
+    const onMove = (ev: MouseEvent) => {
+      if (!previewDragRef.current) return
+      setPreviewPos({
+        top: previewDragRef.current.top + ev.clientY - previewDragRef.current.my,
+        left: previewDragRef.current.left + ev.clientX - previewDragRef.current.mx,
+      })
+    }
+    const onUp = () => {
+      previewDragRef.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
   const setTextureMap = useEditorStore((s) => s.setTextureMap)
   const showToast = useEditorStore((s) => s.showToast)
   const saveCurrentLevel = useEditorStore((s) => s.saveCurrentLevel)
@@ -72,14 +125,25 @@ export default function App() {
   // ── Initialise default blueprint on mount ─────────────────────────────────
 
   useEffect(() => {
-    const { gridX, gridZ, maxY } = settings
-    const bp = makeEmptyBlueprint(gridX, maxY, gridZ)
-    bp.meta.name = "Builder's Hut"
-    bp.meta.fileName = 'buildershut'
-    bp.meta.packName = ''
-    bp.requiredMods = ['minecolonies', 'structurize']
-    setBlueprint(bp)
-    setActiveLayer(0)
+    // Restore last active blueprint from persisted snapshots (survive page refresh)
+    const { activeBuildingName, buildingSnapshots, currentLevel: savedLevel } = useEditorStore.getState()
+    const snapshot = buildingSnapshots[activeBuildingName]
+    const restoredBp = snapshot?.[savedLevel]
+
+    if (restoredBp) {
+      setBlueprint(restoredBp)
+      updateSettings({ gridX: restoredBp.sizeX, gridZ: restoredBp.sizeZ, maxY: restoredBp.sizeY })
+      setActiveLayer(0)
+    } else {
+      const { gridX, gridZ, maxY } = useEditorStore.getState().settings
+      const bp = makeEmptyBlueprint(gridX, maxY, gridZ)
+      bp.meta.name = "Builder's Hut"
+      bp.meta.fileName = 'buildershut'
+      bp.meta.packName = ''
+      bp.requiredMods = ['minecolonies', 'structurize']
+      setBlueprint(bp)
+      setActiveLayer(0)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -132,7 +196,25 @@ export default function App() {
     }
   }
 
-  // ── Drag-and-drop file open ───────────────────────────────────────────────
+  const handleJarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setRpProcessing(true)
+    setRpError(null)
+    try {
+      const { textures, blockstates, models } = await importMinecraftJar(file)
+      setTextureMap(getMemCacheSnapshot())
+      setModelDataLoaded(true)
+      showToast(`JAR imported — ${textures} textures · ${blockstates} blockstates · ${models} models`)
+      setShowResourcePack(false)
+    } catch (err) {
+      setRpError(String(err))
+    } finally {
+      setRpProcessing(false)
+    }
+  }
+
+
 
   const [isDragOver, setIsDragOver] = useState(false)
 
@@ -227,19 +309,29 @@ export default function App() {
             <LayerGrid />
 
             {/* 3D Preview overlay (top-right) */}
-            <div style={{
-              position: 'absolute', top: 16, right: 16,
-              width: '33%', minWidth: 230, maxWidth: 340,
-              background: 'rgba(26,26,29,.94)',
-              border: '1px solid #33333a', borderRadius: 10,
-              boxShadow: '0 14px 34px rgba(0,0,0,.5)',
-              overflow: 'hidden',
-              backdropFilter: 'blur(6px)',
-            }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '9px 12px', borderBottom: '1px solid #2c2c30',
-              }}>
+            <div
+              ref={previewPanelRef}
+              style={{
+                position: 'absolute',
+                ...(previewPos
+                  ? { top: previewPos.top, left: previewPos.left }
+                  : { top: 16, right: 16 }),
+                width: '33%', minWidth: 230, maxWidth: 340,
+                background: 'rgba(26,26,29,.94)',
+                border: '1px solid #33333a', borderRadius: 10,
+                boxShadow: '0 14px 34px rgba(0,0,0,.5)',
+                overflow: 'hidden',
+                backdropFilter: 'blur(6px)',
+              }}
+            >
+              <div
+                onMouseDown={handlePreviewTitleMouseDown}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '9px 12px', borderBottom: '1px solid #2c2c30',
+                  cursor: 'grab', userSelect: 'none',
+                }}
+              >
                 <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', color: '#c8c6cf' }}>
                   3D PREVIEW — L{currentLevel}
                 </div>
@@ -312,27 +404,21 @@ export default function App() {
             width: '74vw', maxWidth: 900, height: '74vh', maxHeight: 720,
             background: '#1c1c1f', border: '1px solid #33333a', borderRadius: 12,
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            transform: `translate(${dragDelta.x}px, ${dragDelta.y}px)`,
+            willChange: 'transform',
           }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 18px', borderBottom: '1px solid #2c2c30', flexShrink: 0,
-            }}>
+            <div
+              onMouseDown={handleModalTitleMouseDown}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 18px', borderBottom: '1px solid #2c2c30', flexShrink: 0,
+                cursor: 'grab', userSelect: 'none',
+              }}
+            >
               <div style={{ fontSize: 13.5, fontWeight: 700, color: '#e8e6e3' }}>
                 3D Preview — Level {currentLevel}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button
-                  onClick={() => setPreviewRotation((previewRotation + 3) % 4)}
-                  style={{ border: '1px solid #33333a', borderRadius: 7, padding: '8px 12px', background: '#232326', color: '#c8c6cf', fontSize: 12.5, cursor: 'pointer' }}
-                >
-                  ⟲ Rotate
-                </button>
-                <button
-                  onClick={() => setPreviewRotation((previewRotation + 1) % 4)}
-                  style={{ border: '1px solid #33333a', borderRadius: 7, padding: '8px 12px', background: '#232326', color: '#c8c6cf', fontSize: 12.5, cursor: 'pointer' }}
-                >
-                  Rotate ⟳
-                </button>
                 <button
                   onClick={() => setShow3DModal(false)}
                   style={{ border: 'none', borderRadius: 7, padding: '8px 14px', background: '#8a6fd6', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
@@ -341,8 +427,28 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <div style={{ flex: 1, minHeight: 0, background: 'radial-gradient(circle at 50% 20%,#1d1d21,#131315)' }}>
-              <Preview3D height={undefined} />
+            <div style={{ flex: 1, minHeight: 0, position: 'relative', background: 'radial-gradient(circle at 50% 20%,#1d1d21,#131315)' }}>
+              <Preview3D height="100%" />
+              {/* Keybindings hint */}
+              <div style={{
+                position: 'absolute', bottom: 14, right: 14,
+                background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: 8, padding: '8px 12px',
+                display: 'flex', flexDirection: 'column', gap: 4,
+                pointerEvents: 'none',
+              }}>
+                {[
+                  ['Left drag', 'Orbit'],
+                  ['Right drag', 'Pan'],
+                  ['Scroll', 'Zoom'],
+                ].map(([key, action]) => (
+                  <div key={key} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <span style={{ fontSize: 10.5, color: '#8a8892', minWidth: 68 }}>{key}</span>
+                    <span style={{ fontSize: 10.5, color: '#c8c6cf', fontWeight: 600 }}>{action}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -425,13 +531,13 @@ export default function App() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
         }}>
           <div style={{ width: 380, background: '#1c1c1f', border: '1px solid #33333a', borderRadius: 12, padding: 24 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Import Resource Pack</div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Import Textures / Block Models</div>
             <div style={{ fontSize: 12.5, color: '#8a8892', marginBottom: 16 }}>
-              Upload a Minecraft resource-pack .zip. PNG textures are matched by block name and rendered on swatches and the layer grid.
+              Upload a Minecraft resource-pack .zip for custom textures, or a Minecraft client .jar to enable full block-model rendering in the 3D preview.
             </div>
             {rpProcessing && (
               <div style={{ fontSize: 12.5, color: '#c8c6cf', padding: '14px 0', textAlign: 'center' }}>
-                Reading zip and matching textures…
+                Reading file and importing assets… (may take a moment for .jar files)
               </div>
             )}
             {rpError && (
@@ -440,10 +546,18 @@ export default function App() {
             <label style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: '1.5px dashed #3a3a40', borderRadius: 8, padding: 22,
-              cursor: 'pointer', color: '#8a8892', fontSize: 12.5, marginBottom: 16,
+              cursor: 'pointer', color: '#8a8892', fontSize: 12.5, marginBottom: 10,
             }}>
-              Click to choose a .zip file
+              Click to choose a resource pack .zip
               <input type="file" accept=".zip" onChange={handleResourcePackFile} style={{ display: 'none' }} />
+            </label>
+            <label style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '1.5px dashed #5a4a7a', borderRadius: 8, padding: 22,
+              cursor: 'pointer', color: '#a88fd6', fontSize: 12.5, marginBottom: 16,
+            }}>
+              Click to choose a Minecraft client .jar
+              <input type="file" accept=".jar,.zip" onChange={handleJarFile} style={{ display: 'none' }} />
             </label>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button

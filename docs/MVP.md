@@ -26,8 +26,8 @@ All seven of the following must work reliably for MVP:
 
 | Gap | Priority | Notes |
 |---|---|---|
-| **Session persistence** | 🔴 Critical | All work (`savedLevels`, pack metadata, checklist progress) is lost on page refresh. Needs Zustand `persist` middleware → `localStorage`. |
-| **Pack progress tracking** | 🟠 High | `sessionBuildings` tracks buildings *visited* this session, not ones actually *exported*. Must be backed by persisted storage. |
+| **Session persistence** | ✅ Done | Zustand `persist` → `localStorage`. `buildingSnapshots`, `exportedBuildings`, `sessionBuildings`, `settings`, `currentLevel` all survive page refresh. |
+| **Pack progress tracking** | ✅ Done | `exportedBuildings` tracks which levels of each building have been exported. PackBuildingsTab shows "X/5 done" / "✓ 5/5" / not-started states. Switching buildings saves/restores all 5 levels. |
 | **NBT round-trip verification** | 🔴 Unknown | The serializer is structurally correct but has never been tested against a live Minecraft instance. |
 | **File naming convention** | 🟡 Medium | Exported names (e.g. `buildershut1.blueprint`) should be verified against what MineColonies actually expects. |
 

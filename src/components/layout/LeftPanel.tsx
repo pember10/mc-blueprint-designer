@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useBlueprintStore } from '@/store/blueprintStore'
 import { useEditorStore } from '@/store/editorStore'
 import type { ToolMode } from '@/lib/blueprint/types'
@@ -136,8 +137,19 @@ export default function LeftPanel() {
   const activeLayer = useEditorStore((s) => s.activeLayer)
 
   const blueprint = useBlueprintStore((s) => s.blueprint)
-  const ghostBlueprint = useBlueprintStore((s) => s.ghostBlueprint)
+  const setGhost = useBlueprintStore((s) => s.setGhost)
   const ghostLevel = useBlueprintStore((s) => s.ghostLevel)
+  const savedLevels = useEditorStore((s) => s.savedLevels)
+  const currentLevel = useEditorStore((s) => s.currentLevel)
+
+  // When the active level changes, auto-select the previous level as ghost
+  useEffect(() => {
+    if (currentLevel <= 1) return
+    const prevLevel = currentLevel - 1
+    setGhost(useEditorStore.getState().savedLevels[prevLevel] ?? null, prevLevel)
+  }, [currentLevel, setGhost])
+
+  const effectiveGhostLevel = ghostLevel ?? Math.max(1, currentLevel - 1)
   const setBlocks = useBlueprintStore((s) => s.setBlocks)
   const ensurePaletteEntry = useBlueprintStore((s) => s.ensurePaletteEntry)
   const selectedBlockName = useEditorStore((s) => s.selectedBlockName)
@@ -465,14 +477,31 @@ export default function LeftPanel() {
           }}
         />
       </button>
-      {ghostBlueprint ? (
-        <div style={{ fontSize: 11, color: '#8a8892', padding: '0 2px' }}>
-          Ghost: Level {ghostLevel ?? '?'} loaded
-        </div>
-      ) : (
-        <div style={{ fontSize: 11, color: '#6a6870', padding: '0 2px' }}>
-          No ghost loaded. Use "Ghost…" in toolbar.
-        </div>
+      {showGhost && (
+        currentLevel === 1 ? (
+          <div style={{ fontSize: 11, color: '#6a6870', padding: '2px 2px 0' }}>
+            L1 has no prior level to ghost.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 2px 0' }}>
+            <span style={{ fontSize: 12.5, color: '#8a8892', flex: 1 }}>Ghost from</span>
+            <select
+              value={effectiveGhostLevel}
+              onChange={(e) => {
+                const lvl = Number(e.target.value)
+                setGhost(savedLevels[lvl] ?? null, lvl)
+              }}
+              style={{
+                background: '#1a1a1e', color: '#c8c6cf', border: '1px solid #33333a',
+                borderRadius: 6, padding: '5px 8px', fontSize: 12.5, cursor: 'pointer',
+              }}
+            >
+              {[1, 2, 3, 4, 5].filter((lvl) => lvl < currentLevel).map((lvl) => (
+                <option key={lvl} value={lvl}>Level {lvl}</option>
+              ))}
+            </select>
+          </div>
+        )
       )}
     </div>
   )

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { Blueprint, ToolMode } from '@/lib/blueprint/types'
 
 // ---------------------------------------------------------------------------
@@ -128,10 +129,25 @@ interface EditorStore {
   setShowResourcePack: (v: boolean) => void
   show3DModal: boolean
   setShow3DModal: (v: boolean) => void
+  /** True after a JAR or resource pack with block models has been imported */
+  modelDataLoaded: boolean
+  setModelDataLoaded: (v: boolean) => void
 
   // Per-level blueprint snapshots: key = level number (1-5)
   savedLevels: Record<number, Blueprint>
   saveCurrentLevel: (level: number, bp: Blueprint) => void
+
+  // Which building name is currently being edited
+  activeBuildingName: string
+
+  // All buildings' work: building name → level → Blueprint
+  buildingSnapshots: Record<string, Record<number, Blueprint>>
+  /** Save current savedLevels under old name, load target building’s levels */
+  switchToBuilding: (name: string) => void
+
+  // Tracking exports: building name → array of exported level numbers
+  exportedBuildings: Record<string, number[]>
+  markLevelExported: (buildingName: string, level: number) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +156,9 @@ interface EditorStore {
 
 let _toastTimer: ReturnType<typeof setTimeout> | null = null
 
-export const useEditorStore = create<EditorStore>()((set) => ({
+export const useEditorStore = create<EditorStore>()(
+  persist(
+    (set) => ({
   tool: 'place',
   setTool: (t) => set({ tool: t }),
 
@@ -234,8 +252,53 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   setShowResourcePack: (v) => set({ showResourcePack: v }),
   show3DModal: false,
   setShow3DModal: (v) => set({ show3DModal: v }),
+  modelDataLoaded: false,
+  setModelDataLoaded: (v) => set({ modelDataLoaded: v }),
 
   savedLevels: {},
   saveCurrentLevel: (level, bp) =>
-    set((s) => ({ savedLevels: { ...s.savedLevels, [level]: bp } })),
-}))
+    set((s) => {
+      const newSaved = { ...s.savedLevels, [level]: bp }
+      const newSnapshots = s.activeBuildingName
+        ? { ...s.buildingSnapshots, [s.activeBuildingName]: { ...(s.buildingSnapshots[s.activeBuildingName] ?? {}), [level]: bp } }
+        : s.buildingSnapshots
+      return { savedLevels: newSaved, buildingSnapshots: newSnapshots }
+    }),
+
+  activeBuildingName: '',
+
+  buildingSnapshots: {},
+  switchToBuilding: (newName) =>
+    set((s) => {
+      // Flush current work to the old building’s snapshot
+      const updatedSnapshots = { ...s.buildingSnapshots }
+      if (s.activeBuildingName) {
+        updatedSnapshots[s.activeBuildingName] = { ...s.savedLevels }
+      }
+      // Load target building’s levels (or empty)
+      const newLevels = (updatedSnapshots[newName] ?? {}) as Record<number, Blueprint>
+      return { buildingSnapshots: updatedSnapshots, activeBuildingName: newName, savedLevels: newLevels }
+    }),
+
+  exportedBuildings: {},
+  markLevelExported: (buildingName, level) =>
+    set((s) => {
+      const current = s.exportedBuildings[buildingName] ?? []
+      if (current.includes(level)) return s
+      return { exportedBuildings: { ...s.exportedBuildings, [buildingName]: [...current, level].sort((a, b) => a - b) } }
+    }),
+  }),
+  {
+    name: 'mc-blueprint-editor',
+    partialize: (s) => ({
+      currentLevel: s.currentLevel,
+      selectedBlockName: s.selectedBlockName,
+      settings: s.settings,
+      sessionBuildings: s.sessionBuildings,
+      activeBuildingName: s.activeBuildingName,
+      buildingSnapshots: s.buildingSnapshots,
+      exportedBuildings: s.exportedBuildings,
+    }),
+  }
+  )
+)
