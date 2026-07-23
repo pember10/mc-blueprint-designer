@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
 import { getAllBlocks } from '@/lib/blocks/registry'
-import { resolveColorSync } from '@/lib/blocks/textures'
+import { resolveColorSync, getBlockTexId } from '@/lib/blocks/textures'
 import { useEditorStore } from '@/store/editorStore'
 import { useBlueprintStore } from '@/store/blueprintStore'
 import { MC_TAG_CATALOGUE } from '@/lib/blueprint/types'
+import { AnimatedBlockIcon } from '@/components/editor/AnimatedBlockIcon'
 
 const ALL_BLOCKS = getAllBlocks().filter((b) => b.id !== 'minecraft:air')
 
@@ -191,13 +192,8 @@ export default function PaletteTab() {
                 cursor: 'pointer',
               }}
             >
-              <div style={{
-                width: 32, height: 32, borderRadius: 5,
-                background: color,
-                backgroundImage: tex ? `url(${tex})` : undefined,
-                backgroundSize: 'cover',
-                imageRendering: 'pixelated',
-              }} />
+              <AnimatedBlockIcon src={tex} size={32} color={color} texId={getBlockTexId(b.id)}
+                style={{ borderRadius: 4 }} />
               <div style={{ fontSize: 9.5, color: '#c8c6cf', textAlign: 'center', lineHeight: 1.2, wordBreak: 'break-word' }}>
                 {b.displayName}
               </div>

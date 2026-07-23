@@ -34,9 +34,14 @@ interface RawVariantEntry {
   weight?: number
 }
 
+interface MultipartEntry {
+  when?: Record<string, unknown>
+  apply: RawVariantEntry | RawVariantEntry[]
+}
+
 interface BlockstateJson {
   variants?: Record<string, RawVariantEntry | RawVariantEntry[]>
-  multipart?: unknown[]
+  multipart?: MultipartEntry[]
 }
 
 // ---------------------------------------------------------------------------
@@ -110,7 +115,18 @@ export async function resolveBlockstate(blockstateStr: string): Promise<Resolved
     }
   }
 
-  // multipart not yet implemented — fall back to null (textured cube)
+  if (bsJson.multipart) {
+    // For multipart blocks (grass_block, fences, walls, etc.):
+    // apply the first unconditional entry as a best-effort single-model render.
+    const always = bsJson.multipart.find(e => !e.when)
+    if (always) {
+      const entry = Array.isArray(always.apply) ? always.apply[0] : always.apply
+      const result = normalise(entry)
+      cache.set(blockstateStr, result)
+      return result
+    }
+  }
+
   cache.set(blockstateStr, null)
   return null
 }
@@ -144,6 +160,10 @@ function matchVariant(
     )
     if (Object.entries(varProps).every(([k, v]) => props[k] === v)) return varVal
   }
+
+  // 4. Last resort: first variant entry (handles fluid blocks, level-only variants, etc.)
+  const first = Object.values(variants)[0]
+  if (first) return first
 
   return null
 }

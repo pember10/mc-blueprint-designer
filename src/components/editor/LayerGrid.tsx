@@ -1,7 +1,8 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react'
 import { useBlueprintStore } from '@/store/blueprintStore'
 import { useEditorStore } from '@/store/editorStore'
-import { resolveColorSync } from '@/lib/blocks/textures'
+import { resolveColorSync, getBlockTexId } from '@/lib/blocks/textures'
+import { AnimatedBlockIcon } from '@/components/editor/AnimatedBlockIcon'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -235,7 +236,7 @@ export default function LayerGrid() {
         const tagId = showTagMarkers ? (tags[`${x}_${activeLayer}_${z}`] ?? null) : null
 
         let bgColor = '#131315'
-        if (!isAir) bgColor = color!
+        if (!isAir && color && color !== 'transparent') bgColor = color
         else if (hasGhost && ghostCol) bgColor = hexToRgba(ghostCol, 0.3)
 
         let borderColor = '#2a2a2e'
@@ -246,7 +247,7 @@ export default function LayerGrid() {
 
         const shadow = isHover ? '0 0 0 2px #8a6fd6' : inSel ? '0 0 0 1px #4a9fff' : 'none'
 
-        out.push({ key, x, z, bgColor, tex, shadow, borderColor, tagId })
+        out.push({ key, x, z, bgColor, tex, texId: tex ? getBlockTexId(texKey) : undefined, shadow, borderColor, tagId })
       }
     }
     return out
@@ -289,15 +290,24 @@ export default function LayerGrid() {
               style={{
                 width: cellSize, height: cellSize, position: 'relative', cursor: 'pointer',
                 background: cell.bgColor,
-                backgroundImage: cell.tex ? `url(${cell.tex})` : 'repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 3px,transparent 3px 6px)',
-                backgroundSize: cell.tex ? 'cover' : undefined,
+                backgroundImage: cell.tex ? undefined : 'repeating-linear-gradient(45deg,rgba(0,0,0,.08) 0 3px,transparent 3px 6px)',
                 imageRendering: 'pixelated',
                 border: `1px solid ${cell.borderColor}`,
                 boxShadow: cell.shadow,
                 boxSizing: 'border-box',
                 borderRadius: 1,
+                overflow: 'hidden',
               }}
             >
+              {cell.tex && (
+                <AnimatedBlockIcon
+                  src={cell.tex}
+                  size={32}
+                  color={cell.bgColor}
+                  texId={cell.texId}
+                  style={{ position: 'absolute', top: 0, left: 0, width: cellSize, height: cellSize, borderRadius: 0 }}
+                />
+              )}
               {cell.tagId && cellSize >= 14 && (
                 <div style={{
                   position: 'absolute', bottom: 2, right: 2,

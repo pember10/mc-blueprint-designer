@@ -110,9 +110,10 @@ interface EditorStore {
   highlightBlock: string | null
   setHighlightBlock: (id: string | null) => void
 
-  // Texture map loaded from resource pack: blockId → data URL
+  // Texture map: blockId → data URL (merged from preload + resource pack import)
   textureMap: Record<string, string>
   setTextureMap: (m: Record<string, string>) => void
+  clearTextureMap: () => void
 
   // Toast notification
   toast: string | null
@@ -234,7 +235,8 @@ export const useEditorStore = create<EditorStore>()(
   setHighlightBlock: (id) => set({ highlightBlock: id }),
 
   textureMap: {},
-  setTextureMap: (m) => set({ textureMap: m }),
+  setTextureMap: (m) => set((s) => ({ textureMap: { ...s.textureMap, ...m } })),
+  clearTextureMap: () => set({ textureMap: {} }),
 
   toast: null,
   showToast: (msg) => {
@@ -252,7 +254,7 @@ export const useEditorStore = create<EditorStore>()(
   setShowResourcePack: (v) => set({ showResourcePack: v }),
   show3DModal: false,
   setShow3DModal: (v) => set({ show3DModal: v }),
-  modelDataLoaded: false,
+  modelDataLoaded: true,
   setModelDataLoaded: (v) => set({ modelDataLoaded: v }),
 
   savedLevels: {},

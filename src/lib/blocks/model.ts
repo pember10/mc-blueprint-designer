@@ -120,7 +120,14 @@ export async function resolveModel(modelId: string): Promise<ResolvedModel | nul
     if (raw.elements?.length) { rawElements = raw.elements; break }
   }
 
+  // Fluid blocks (lava, water) have no elements — return the resolved textures
+  // so buildBlockMesh can synthesise a full-cube fallback from the particle texture.
   if (!rawElements) {
+    if (Object.keys(resolvedTextures).length > 0) {
+      const result: ResolvedModel = { elements: [], textures: resolvedTextures }
+      resolvedCache.set(modelId, result)
+      return result
+    }
     resolvedCache.set(modelId, null)
     return null
   }

@@ -7,7 +7,8 @@ import RightRail from '@/components/panels/RightRail'
 import MissingModsBanner from '@/components/modding/MissingModsBanner'
 import { useEditorStore } from '@/store/editorStore'
 import { useBlueprintStore, makeEmptyBlueprint, resizeBlueprint } from '@/store/blueprintStore'
-import { importResourcePack, importMinecraftJar, getMemCacheSnapshot } from '@/lib/blocks/textures'
+import { preloadAllTextures, isPreloadDone } from '@/lib/blocks/preloader'
+import { importResourcePack, importMinecraftJar, getMemCacheSnapshot, setCdnVersion, cdnVersion, getAllCachedTextures } from '@/lib/blocks/textures'
 import { validateBlueprint } from '@/lib/blueprint/validate'
 import { parseBlueprintFile } from '@/lib/io/localIO'
 
@@ -35,6 +36,29 @@ export default function App() {
   const show3DModal = useEditorStore((s) => s.show3DModal)
   const setShow3DModal = useEditorStore((s) => s.setShow3DModal)
   const setModelDataLoaded = useEditorStore((s) => s.setModelDataLoaded)
+  const setTextureMap = useEditorStore((s) => s.setTextureMap)
+
+  // ── Texture preload ───────────────────────────────────────────────────────
+  const [preloadVisible, setPreloadVisible] = useState(() => !isPreloadDone())
+  const [preloadProgress, setPreloadProgress] = useState({ loaded: 0, total: 1060 })
+
+  useEffect(() => {
+    if (isPreloadDone()) {
+      // IDB already has everything from a previous session — restore silently.
+      getAllCachedTextures().then((map) => setTextureMap(map))
+      return
+    }
+    preloadAllTextures(
+      (loaded, total) => setPreloadProgress({ loaded, total }),
+      (batch) => setTextureMap(batch),
+    ).then(() => setPreloadVisible(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Resource pack / JAR import ────────────────────────────────────────────
+  const [rpProcessing, setRpProcessing] = useState(false)
+  const [rpError, setRpError] = useState<string | null>(null)
+  const [cdnVer, setCdnVer] = useState(cdnVersion)
 
   // 3D modal drag-to-move
   const [dragDelta, setDragDelta] = useState({ x: 0, y: 0 })
@@ -89,7 +113,6 @@ export default function App() {
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
   }
-  const setTextureMap = useEditorStore((s) => s.setTextureMap)
   const showToast = useEditorStore((s) => s.showToast)
   const saveCurrentLevel = useEditorStore((s) => s.saveCurrentLevel)
   const currentLevel_forSave = useEditorStore((s) => s.currentLevel)
@@ -175,9 +198,6 @@ export default function App() {
   }, [setTool, toggleSymmetryX, toggleSymmetryZ, setShowGhost, showGhost, activeLayer, setActiveLayer, blueprint, setSelection])
 
   // ── Resource pack import ──────────────────────────────────────────────────
-
-  const [rpProcessing, setRpProcessing] = useState(false)
-  const [rpError, setRpError] = useState<string | null>(null)
 
   const handleResourcePackFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -394,6 +414,48 @@ export default function App() {
         <RightRail />
       </div>
 
+      {/* ── Texture Preload Modal ── */}
+      {preloadVisible && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80,
+        }}>
+          <div style={{
+            width: 380, background: '#1c1c1f', border: '1px solid #33333a',
+            borderRadius: 12, padding: '28px 28px 24px',
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#e8e6e3', marginBottom: 6 }}>
+              Loading Block Textures
+            </div>
+            <div style={{ fontSize: 12, color: '#8a8892', marginBottom: 18 }}>
+              Fetching vanilla textures from CDN. Cached after first load.
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ background: '#2c2c30', borderRadius: 6, height: 8, marginBottom: 10, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 6, background: '#8a6fd6',
+                width: `${preloadProgress.total > 0 ? (preloadProgress.loaded / preloadProgress.total) * 100 : 0}%`,
+                transition: 'width 0.15s ease',
+              }} />
+            </div>
+            <div style={{ fontSize: 11.5, color: '#6a6870', marginBottom: 20 }}>
+              {preloadProgress.loaded} / {preloadProgress.total} blocks
+            </div>
+
+            <button
+              onClick={() => setPreloadVisible(false)}
+              style={{
+                border: '1px solid #3a3a40', borderRadius: 7, padding: '7px 16px',
+                background: 'transparent', color: '#8a8892', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              Continue in Background
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── 3D Modal ── */}
       {show3DModal && (
         <div style={{
@@ -530,10 +592,31 @@ export default function App() {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
         }}>
-          <div style={{ width: 380, background: '#1c1c1f', border: '1px solid #33333a', borderRadius: 12, padding: 24 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Import Textures / Block Models</div>
-            <div style={{ fontSize: 12.5, color: '#8a8892', marginBottom: 16 }}>
-              Upload a Minecraft resource-pack .zip for custom textures, or a Minecraft client .jar to enable full block-model rendering in the 3D preview.
+          <div style={{ width: 420, background: '#1c1c1f', border: '1px solid #33333a', borderRadius: 12, padding: 24 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Textures &amp; Block Models</div>
+
+            {/* CDN auto-load status */}
+            <div style={{ background: '#1a2a1a', border: '1px solid #2a4a2a', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: '#7fcf7f', fontWeight: 600, marginBottom: 4 }}>✓ Vanilla assets load automatically</div>
+              <div style={{ fontSize: 11.5, color: '#6a8a6a', marginBottom: 8 }}>
+                Block models and textures are fetched on demand from jsDelivr (InventivetalentDev/minecraft-assets) and cached locally.
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11.5, color: '#8a8892', whiteSpace: 'nowrap' }}>MC version:</span>
+                <select
+                  value={cdnVer}
+                  onChange={(e) => { setCdnVer(e.target.value); setCdnVersion(e.target.value) }}
+                  style={{ flex: 1, background: '#232326', border: '1px solid #3a3a40', borderRadius: 5, color: '#e8e6e3', fontSize: 12, padding: '3px 7px' }}
+                >
+                  {['1.21.4', '1.21.3', '1.21.1', '1.21', '1.20.4', '1.20.2', '1.20.1', '1.19.4', '1.18.2'].map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12.5, color: '#8a8892', marginBottom: 12 }}>
+              Import a file to override vanilla assets or add mod/custom textures:
             </div>
             {rpProcessing && (
               <div style={{ fontSize: 12.5, color: '#c8c6cf', padding: '14px 0', textAlign: 'center' }}>
@@ -545,18 +628,18 @@ export default function App() {
             )}
             <label style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '1.5px dashed #3a3a40', borderRadius: 8, padding: 22,
+              border: '1.5px dashed #3a3a40', borderRadius: 8, padding: 18,
               cursor: 'pointer', color: '#8a8892', fontSize: 12.5, marginBottom: 10,
             }}>
-              Click to choose a resource pack .zip
+              Resource pack .zip (textures only)
               <input type="file" accept=".zip" onChange={handleResourcePackFile} style={{ display: 'none' }} />
             </label>
             <label style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '1.5px dashed #5a4a7a', borderRadius: 8, padding: 22,
+              border: '1.5px dashed #5a4a7a', borderRadius: 8, padding: 18,
               cursor: 'pointer', color: '#a88fd6', fontSize: 12.5, marginBottom: 16,
             }}>
-              Click to choose a Minecraft client .jar
+              Minecraft client .jar (textures + models, replaces CDN)
               <input type="file" accept=".jar,.zip" onChange={handleJarFile} style={{ display: 'none' }} />
             </label>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

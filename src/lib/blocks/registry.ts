@@ -89,6 +89,8 @@ const BLOCK_COLORS: Record<string, string> = {
   'minecraft:end_stone': '#d8d8a0',
   'minecraft:purpur_block': '#9878a0',
   'minecraft:hay_block': '#c8a830',
+  'minecraft:lava': '#e06000',
+  'minecraft:water': '#3F76E4',
 }
 
 function colorForBlock(id: string): string {
